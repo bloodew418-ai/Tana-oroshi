@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CbAL/FHI1xrREzt/Cqihl6WmsBvB8c9yT+3Y4u2gGrI=' 'sha256-593rUl6zK1g1AapPlJPCzHQNKS/00u++JUsXGXY+FDU='; style-src 'unsafe-inline'; img-src data: 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>アカウント棚卸し</title>
+<meta name="theme-color" content="#0B0B0C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="棚卸し">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<style>
+:root{
+  --color-bg:#0B0B0C; --color-surface:#151517; --color-surface-elevated:#1D1D20;
+  --color-text-primary:#F5F5F3; --color-text-secondary:#A6A6AA; --color-text-disabled:#68686C;
+  --color-border:#303034; --color-border-strong:#55555A;
+  --color-inverse-bg:#F3F2EE; --color-inverse-text:#111113; --color-danger:#D84C4C;
+  --radius-card-large:16px; --radius-card:12px; --radius-input:12px; --radius-button-primary:14px; --radius-button-secondary:12px; --radius-bottom-nav:20px; --radius-chip:999px;
+  --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s20:20px; --s24:24px; --s32:32px; --s40:40px;
+  --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{height:100%;background:var(--color-bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--color-bg);color:var(--color-text-primary);font-family:var(--font);font-size:16px;line-height:1.55;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+button:active,a:active{opacity:.7}
+:focus-visible{outline:2px solid var(--color-text-primary);outline-offset:2px}
+a{color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.label-en{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.08em;color:var(--color-text-secondary)}
+.sec-text{font-size:14px;color:var(--color-text-secondary);line-height:1.5}
+.micro{font-size:12px;font-weight:500;color:var(--color-text-secondary);line-height:1.4}
+.wrap{max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.main{flex:1;padding:0 var(--s20) 136px;display:flex;flex-direction:column;gap:var(--s32)}
+.main.withcta{padding-bottom:120px}
+.appheader{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:var(--s8);padding:var(--s4) var(--s12) var(--s20) var(--s20)}
+.appheader.sub{padding-left:var(--s8);padding-bottom:var(--s8)}
+.pagetitle{font-size:28px;font-weight:700;line-height:1.2;margin:0}
+.headtitle{font-size:17px;font-weight:600;margin:0}
+.iconbtn{width:44px;height:44px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--color-text-primary)}
+.backbtn{height:44px;min-width:44px;border:none;background:transparent;display:flex;align-items:center;gap:var(--s4);padding:0 var(--s8) 0 var(--s4);color:var(--color-text-primary);font-size:16px}
+.backbtn span{color:var(--color-text-secondary)}
+.sectitle{font-size:22px;font-weight:700;line-height:1.3;margin:0}
+.sechead{display:flex;justify-content:space-between;align-items:center;gap:var(--s12)}
+.morebtn{height:44px;border:none;background:transparent;display:flex;align-items:center;gap:var(--s4);font-size:14px;color:var(--color-text-secondary);padding:0}
+.stack{display:flex;flex-direction:column;gap:var(--s12)}
+.stack8{display:flex;flex-direction:column;gap:var(--s8)}
+.summary{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card-large);padding:var(--s20);display:flex;flex-direction:column;gap:var(--s16)}
+.summary .top{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s12)}
+.bigamt{font-size:46px;font-weight:700;line-height:1.05;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.divider{height:1px;background:var(--color-border)}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols3>div{padding:0 var(--s12);border-left:1px solid var(--color-border);display:flex;flex-direction:column;gap:var(--s4);min-width:0}
+.cols3>div:first-child{padding-left:0;border-left:none}
+.cols3 b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card)}
+.row{display:flex;align-items:center;gap:var(--s12);padding:var(--s16);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card);width:100%;text-align:left;min-height:72px;color:var(--color-text-primary)}
+.row .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row .t b{font-size:17px;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .r{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.row .r b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.chev{color:var(--color-text-secondary);flex-shrink:0;display:flex}
+.renew .date{display:flex;flex-direction:column;gap:2px;padding-right:var(--s12);border-right:1px solid var(--color-border);width:88px;flex-shrink:0;box-sizing:border-box} /* 「12月31日」が収まる幅 */
+.renew .date b{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.renew .rbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.renew .rname{font-size:17px;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.renew .rmeta{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:baseline;gap:0 var(--s8);min-width:0}
+.renew .rmeta .sec-text{white-space:nowrap}
+.renew .rmeta>.sec-text{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis} /* カテゴリ側だけ縮む */
+.renew .ramt{margin-left:auto;white-space:nowrap;flex:0 0 auto} /* 金額 / 周期は改行・縮小しない */
+.renew .ramt b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.renew .chev{margin-left:calc(var(--s4) * -1)}
+.icontile{width:48px;height:48px;border-radius:14px;background:var(--color-surface-elevated);border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-text-primary)}
+.icontile.lg{width:64px;height:64px;border-radius:16px}
+.icontile.danger{color:var(--color-danger);background:rgba(216,76,76,.12);border-color:rgba(216,76,76,.3)}
+.btn{height:56px;border:none;border-radius:var(--radius-button-primary);background:var(--color-inverse-bg);color:var(--color-inverse-text);font-size:16px;font-weight:600;width:100%;display:flex;align-items:center;justify-content:center;gap:var(--s12)}
+.btn2{height:48px;border:1px solid var(--color-border);border-radius:var(--radius-button-secondary);background:var(--color-surface);color:var(--color-text-primary);font-size:16px;font-weight:500;width:100%;display:flex;align-items:center;justify-content:center;gap:var(--s12)}
+.btn2.danger{color:var(--color-danger);border-color:rgba(216,76,76,.4);background:rgba(216,76,76,.08)}
+.btn:disabled,.btn2:disabled{background:var(--color-surface);color:var(--color-text-disabled);pointer-events:none}
+.link{height:44px;border:none;background:transparent;color:var(--color-text-secondary);font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:0;align-self:center}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:var(--s16);padding:var(--s40) 0}
+.empty .ill{width:120px;height:96px;color:var(--color-text-secondary)}
+.empty h2{font-size:22px;font-weight:700;margin:0;line-height:1.3}
+.search{display:flex;align-items:center;gap:var(--s12);height:56px;padding:0 var(--s16);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-input);color:var(--color-text-secondary)}
+.search:focus-within{border-color:var(--color-border-strong)}
+.search input{border:none;outline:none;background:transparent;font-size:16px;flex:1;min-width:0;color:var(--color-text-primary)}
+.search input::placeholder,.inp::placeholder{color:var(--color-text-disabled)}
+.chips{display:flex;gap:var(--s8);overflow-x:auto;scrollbar-width:none;margin:0 calc(var(--s20) * -1);padding:0 var(--s20)}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:44px;padding:0 var(--s20);border-radius:var(--radius-chip);border:1px solid var(--color-border);background:var(--color-surface);white-space:nowrap;font-size:15px;color:var(--color-text-primary);flex-shrink:0}
+.chip[aria-pressed="true"]{background:var(--color-inverse-bg);color:var(--color-inverse-text);border-color:var(--color-inverse-bg);font-weight:600}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s12)}
+
+.scard{display:flex;flex-direction:column;align-items:stretch;gap:var(--s12);padding:var(--s16);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card);text-align:left;min-height:124px;color:var(--color-text-primary);min-width:0}
+.scard .top{display:flex;justify-content:space-between;align-items:flex-start}
+.scard .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.scard .t b{font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.sechead .sectitle{flex:1;min-width:0}
+.morebtn{white-space:nowrap;flex-shrink:0}
+.cols3 b{font-size:clamp(15px,4.4vw,18px)}
+/* 次回更新カード：狭い画面では余白を詰めて名称・金額の幅を確保（アイコン48px・Chevronは不変） */
+@media (max-width:400px){
+  .renew{gap:var(--s8);padding-left:var(--s12);padding-right:var(--s12)}
+  .renew .date{width:82px;padding-right:var(--s8)}
+  .renew .date b{font-size:15px}
+}
+@media (max-width:380px){
+  .renew .date{width:76px}
+  .renew .date b{font-size:14px}
+  .renew .rname{font-size:16px;line-height:1.4375} /* 行の高さは17px時と同じ約23px＝カード86pxを維持 */
+}
+@media (max-width:380px){
+  .sectitle{font-size:20px}
+  .bigamt{font-size:44px}
+}
+.field{display:flex;flex-direction:column;gap:var(--s8)}
+.flabel{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.flabel small{font-weight:400;color:var(--color-text-secondary);margin-left:var(--s8)}
+.form{display:flex;flex-direction:column;gap:var(--s20)}
+.inp{height:56px;border-radius:var(--radius-input);border:1px solid var(--color-border);background:var(--color-surface);padding:0 var(--s16);font-size:16px;width:100%;color:var(--color-text-primary)}
+.inp:focus{outline:none;border-color:var(--color-border-strong)}
+textarea.inp{height:116px;padding:var(--s12) var(--s16);resize:none;line-height:1.55}
+.amountbox{display:flex;align-items:center;height:56px;border-radius:var(--radius-input);border:1px solid var(--color-border);background:var(--color-surface)}
+.amountbox:focus-within{border-color:var(--color-border-strong)}
+.amountbox input{flex:1;min-width:0;border:none;outline:none;background:transparent;padding:0 var(--s16);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-text-primary)}
+.amountbox span{padding:0 var(--s16);border-left:1px solid var(--color-border);color:var(--color-text-secondary);white-space:nowrap;font-size:15px}
+.pickrow{height:56px;border-radius:var(--radius-input);border:1px solid var(--color-border);background:var(--color-surface);padding:0 var(--s12) 0 var(--s16);display:flex;align-items:center;justify-content:space-between;width:100%;font-size:16px;color:var(--color-text-primary);text-align:left}
+.pickrow .ph{color:var(--color-text-disabled)}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s4);padding:var(--s4);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-input)}
+.seg button{height:48px;border:none;border-radius:9px;background:transparent;font-size:15px;color:var(--color-text-primary)}
+.seg button[aria-pressed="true"]{background:var(--color-inverse-bg);color:var(--color-inverse-text);font-weight:600}
+.counter{position:absolute;right:var(--s12);bottom:var(--s8);font-size:12px;color:var(--color-text-secondary)}
+.usechips{display:flex;flex-wrap:wrap;gap:var(--s8)}
+.usechip{height:44px;padding:0 var(--s16);border-radius:var(--radius-chip);border:1px solid var(--color-border);background:var(--color-surface);font-size:14px;color:var(--color-text-primary)}
+.svchead{display:flex;align-items:center;gap:var(--s16)}
+.svchead b{font-size:24px;font-weight:700;line-height:1.3;word-break:break-word}
+.glist{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card)}
+.gitem{display:flex;align-items:center;gap:var(--s12);padding:var(--s12) var(--s16);min-height:64px;width:100%;background:transparent;border:none;border-bottom:1px solid var(--color-border);text-align:left;color:var(--color-text-primary);text-decoration:none}
+.gitem:last-child{border-bottom:none}
+.gitem .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gitem .t b{font-size:16px;font-weight:600;word-break:break-word}
+.meta{display:flex;flex-wrap:wrap;align-items:baseline}
+.meta .nw{white-space:nowrap}
+.meta .sep{margin:0 2px}
+.gitem .ic{color:var(--color-text-secondary);display:flex;width:24px;justify-content:center;flex-shrink:0}
+.acct{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card-large);overflow:hidden}
+.acct .head{display:flex;align-items:center;gap:var(--s12);padding:var(--s16);border-bottom:1px solid var(--color-border)}
+.acct .head .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.acct .head b{font-size:17px;font-weight:600;word-break:break-all}
+.setrow{display:flex;align-items:center;gap:var(--s16);min-height:72px;padding:var(--s12) 0;border:none;border-bottom:1px solid var(--color-border);background:transparent;width:100%;text-align:left;color:var(--color-text-primary)}
+.setrow .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.setrow .t b{font-size:17px;font-weight:600}
+.setrow.danger .t b{color:var(--color-danger)}
+.setrow.disabled{cursor:default;border-bottom:1px solid var(--color-border)}
+.setrow.disabled .t b{color:var(--color-text-secondary);font-weight:500}
+.setrow.disabled .icontile{color:var(--color-text-disabled);background:transparent}
+.soon{font-size:12px;font-weight:500;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-chip);padding:2px 10px;white-space:nowrap}
+.togglecard{display:flex;align-items:center;justify-content:space-between;gap:var(--s16);padding:var(--s16);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card)}
+.switch{width:52px;height:32px;border-radius:16px;border:1px solid var(--color-border-strong);background:var(--color-surface-elevated);padding:3px;display:flex;flex-shrink:0;position:relative}
+.switch::before{content:"";position:absolute;inset:-6px}
+.switch span{width:24px;height:24px;border-radius:12px;background:var(--color-text-secondary);transition:transform .18s}
+.switch[aria-pressed="true"]{background:var(--color-inverse-bg);border-color:var(--color-inverse-bg)}
+.switch[aria-pressed="true"] span{transform:translateX(20px);background:var(--color-inverse-text)}
+.infocard{display:flex;gap:var(--s12);padding:var(--s16);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card)}
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--color-surface);border-top:1px solid var(--color-border);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+.nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));height:64px;padding:0 var(--s12)}
+.nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:500;color:var(--color-text-secondary)}
+.nav button[aria-current="page"]{color:var(--color-text-primary);font-weight:600}
+.fixedcta{position:fixed;left:0;right:0;bottom:0;padding:var(--s12) var(--s20) calc(var(--s16) + env(safe-area-inset-bottom,0px));background:var(--color-bg);border-top:1px solid var(--color-border);z-index:6}
+.fixedcta .in{max-width:520px;margin:0 auto}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--color-surface);border:1px solid var(--color-border);border-bottom:none;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:var(--s24) var(--s20) calc(var(--s24) + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:var(--s16);max-height:88vh;overflow-y:auto}
+.sheet .h2{font-size:22px;font-weight:700;margin:0;line-height:1.3}
+.sheet .btn,.sheet .btn2{flex-shrink:0}
+.note{font-size:14px;color:var(--color-text-secondary);line-height:1.6}
+.sheet textarea.inp{height:140px;font-family:var(--mono);font-size:12px}
+.daygrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--s4)}
+.monthgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--s4)}
+.dcell{height:44px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-elevated);font-size:15px;color:var(--color-text-primary);font-variant-numeric:tabular-nums}
+.dcell[aria-pressed="true"]{background:var(--color-inverse-bg);color:var(--color-inverse-text);border-color:var(--color-inverse-bg);font-weight:600}
+.optrow{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:0 var(--s4);border:none;border-bottom:1px solid var(--color-border);background:transparent;width:100%;text-align:left;font-size:16px;color:var(--color-text-primary)}
+.optrow:last-child{border-bottom:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--color-inverse-bg);color:var(--color-inverse-text);padding:var(--s12) var(--s16);border-radius:12px;font-size:14px;font-weight:600;z-index:30;max-width:90vw;text-align:center}
+details.more{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card)}
+details.more summary{list-style:none;min-height:56px;padding:0 var(--s16);display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:15px;font-weight:600}
+details.more summary::-webkit-details-marker{display:none}
+details.more .body{display:flex;flex-direction:column;gap:var(--s20);padding:var(--s4) var(--s16) var(--s20)}
+details.more[open] summary svg{transform:rotate(180deg)}
+.reveal{animation:reveal .18s ease-out both}
+@keyframes reveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.btn.sec2{height:48px;background:var(--color-surface);color:var(--color-text-primary);border:1px solid var(--color-border);border-radius:var(--radius-button-secondary);font-weight:500}
+.btn.danger{background:var(--color-danger);color:#FFFFFF}
+.btn.acc{background:var(--color-inverse-bg);color:var(--color-inverse-text)}
+.h2{margin:0}
+#print{display:none}
+.reveal{animation:reveal .18s ease-out both}
+@keyframes reveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#FFFFFF;color:#22201C}
+  .wrap,.nav,.fab,.sheet-bg,.toast,.bottombar,.fixedcta{display:none!important}
+  #print{display:block}
+}
+/* print document */
+.pd{font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;color:#22201C;font-size:10.5pt}
+.pd .mincho{font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif}
+.pd h1{font-size:22pt;margin:0;letter-spacing:.08em}
+.pd .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #22201C;padding-bottom:8pt;margin-bottom:12pt}
+.pd .meta{text-align:right;font-size:9.5pt;line-height:1.6}
+.pd .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8pt;margin-bottom:10pt}
+.pd .kpi{border-top:3px solid #A8864B;background:#F4F0E8;padding:7pt 10pt}
+.pd .kpi small{display:block;font-size:9pt;font-weight:700;color:#5E574B}
+.pd .kpi b{font-size:18pt}
+.pd .warn{border:1px solid #A8864B;padding:6pt 9pt;font-size:9pt;margin-bottom:12pt}
+.pd .warn b{color:#7E6333}
+.pd .h{display:flex;gap:9pt;align-items:baseline;margin:11pt 0 5pt}
+.pd .h .n{font-size:18pt;color:#7E6333;font-weight:700}
+.pd .h h2{font-size:13pt;margin:0}
+.pd .h small{display:block;font-size:9pt;color:#5E574B}
+.pd table{width:100%;border-collapse:collapse}
+.pd th{background:#F4F0E8;border-bottom:1px solid #22201C;text-align:left;font-size:9pt;padding:5pt 6pt}
+.pd td{border-bottom:1px solid #CFC6B6;padding:4pt 6pt;font-size:9.5pt}
+.pd td.r,.pd th.r{text-align:right}
+.pd td.b{font-weight:700}
+.pd .groups{display:grid;grid-template-columns:repeat(2,1fr);gap:12pt}
+.pd .g{break-inside:avoid}
+.pd .gh{background:#F4F0E8;border-bottom:1px solid #22201C;padding:4pt 7pt;display:flex;justify-content:space-between;align-items:baseline}
+.pd .gi{display:flex;justify-content:space-between;border-bottom:1px solid #CFC6B6;padding:3pt 7pt;font-size:9pt}
+.pd .gi span:last-child{color:#5E574B}
+.pd .steps div{display:flex;gap:9pt;margin-bottom:4pt;line-height:1.6}
+.pd .steps b{color:#7E6333}
+.pd .foot{border-top:1px solid #CFC6B6;margin-top:10pt;padding-top:6pt;font-size:8.5pt;color:#5E574B;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="print"></div>
+<script>
+(function(){
+"use strict";
+
+/* ===== 定数 ===== */
+var STORE_KEY = "tanaoroshi:v1";
+var APP_ID = "account-tanaoroshi";
+var SCHEMA = 1;
+var LIMITS = {name:50, plan:40, email:120, nickname:30, memo:500, url:300, items:500, myPresets:100, ownerName:30};
+
+var CATS = [
+  {id:"video", label:"動画", color:"#D4533A", fg:"#FFFFFF"},
+  {id:"music", label:"音楽", color:"#7457C2", fg:"#FFFFFF"},
+  {id:"shop", label:"買い物", color:"#B7801A", fg:"#FFFFFF"},
+  {id:"game", label:"ゲーム", color:"#2A8A60", fg:"#FFFFFF"},
+  {id:"learning", label:"学習", color:"#857965", fg:"#FFFFFF"},
+  {id:"ai", label:"AI", color:"#857965", fg:"#FFFFFF"},
+  {id:"tool", label:"仕事", color:"#56688A", fg:"#FFFFFF"},
+  {id:"cloud", label:"クラウド", color:"#2C7FB8", fg:"#FFFFFF"},
+  {id:"utilities", label:"公共料金", color:"#857965", fg:"#FFFFFF"},
+  {id:"telecom", label:"通信", color:"#857965", fg:"#FFFFFF"},
+  {id:"map", label:"地図", color:"#857965", fg:"#FFFFFF"},
+  {id:"health", label:"健康", color:"#857965", fg:"#FFFFFF"},
+  {id:"other", label:"その他", color:"#857965", fg:"#FFFFFF"}
+];
+var CYCLES = {monthly:"月額", yearly:"年額", free:"無料"};
+var PAYMENTS = [["card","カード"],["carrier","携帯料金とまとめて"],["appstore","App Store"],["googleplay","Google Play"],["paypay","PayPay"],["bank","口座振替"],["other","その他"]];
+var LOGINS = [["email","メール＋パスワード"],["google","Googleでログイン"],["apple","Appleでログイン"],["line","LINEでログイン"],["x","Xでログイン"],["other","その他"]];
+/* 登録先一覧の表示用だけの短い名前（保存値・PDFの表記は変えない） */
+var LOGIN_SHORT = {email:"メール認証", google:"Googleログイン", apple:"Appleログイン", line:"LINEログイン", x:"Xログイン", other:"その他"};
+var STATUSES = [["active","利用中"],["cancelling","解約予定"],["cancelled","解約済み"]];
+
+/* 公式リンクはプリセット選定のときに確認して入れる（v0.1では空） */
+var PRESETS = [
+  {id:"netflix", name:"Netflix", cat:"video", ch:"N", accent:"#D6453D"},
+  {id:"unext", name:"U-NEXT", cat:"video", ch:"U", accent:"#9C8CD6"},
+  {id:"disneyplus", name:"Disney+", cat:"video", ch:"D", accent:"#6E8FD9"},
+  {id:"hulu", name:"Hulu", cat:"video", ch:"H", accent:"#4FB77F"},
+  {id:"dazn", name:"DAZN", cat:"video", ch:"D", accent:"#AEB85A"},
+  {id:"abema", name:"ABEMAプレミアム", cat:"video", ch:"A", accent:"#9A93B0"},
+  {id:"youtube-premium", name:"YouTube Premium", cat:"video", ch:"Y", accent:"#E8675F"},
+  {id:"spotify", name:"Spotify", cat:"music", ch:"S", accent:"#3CB36A"},
+  {id:"apple-music", name:"Apple Music", cat:"music", ch:"A", accent:"#E0607A"},
+  {id:"amazon-music", name:"Amazon Music Unlimited", cat:"music", ch:"A", accent:"#4CB6C9"},
+  {id:"line-music", name:"LINE MUSIC", cat:"music", ch:"L", accent:"#4DB36E"},
+  {id:"amazon-prime", name:"Amazonプライム", cat:"shop", ch:"A", accent:"#4C9BD6"},
+  {id:"lyp-premium", name:"LYPプレミアム", cat:"shop", ch:"L", accent:"#C9A24C"},
+  {id:"icloud", name:"iCloud+", cat:"cloud", ch:"i", accent:"#5AA6D8"},
+  {id:"google-one", name:"Google One", cat:"cloud", ch:"G", accent:"#6F9BE0"},
+  {id:"dropbox", name:"Dropbox", cat:"cloud", ch:"D", accent:"#5C8BE0"},
+  {id:"ms365", name:"Microsoft 365", cat:"tool", ch:"M", accent:"#D9774A"},
+  {id:"nso", name:"Nintendo Switch Online", cat:"game", ch:"N", accent:"#D9504A"},
+  {id:"claude-pro", name:"Claude Pro", cat:"ai", ch:"C", accent:"#D9895B"},
+  {id:"x-premium", name:"X Premium", cat:"other", ch:"X"},
+  {id:"ps-plus", name:"PlayStation Plus", cat:"game", ch:"P", accent:"#5B86D6"}
+];
+
+/* ===== 保存 ===== */
+var state = {items:[], myPresets:[], settings:{ownerName:"", mask:true}};
+var ui = {tab:"subs", screen:"home", id:null, draft:null, filter:"all", q:"", sheet:null, showCancelled:false};
+
+/* Phase A：保存データの読み込み状態（empty / ok / locked / unavailable）。永続保存せず、起動ごとに再判定する */
+var store = {status:"empty", reason:""};
+var rawAtLoad = null; /* Phase D：保存禁止のときだけ、起動時に読んだ元データを保持（保存しない） */
+var LOCK_TOAST = "保存データを守るため、保存を止めています（画面上部の案内をご確認ください）";
+function load(){
+  var raw;
+  try{ raw = window.localStorage.getItem(STORE_KEY); }
+  catch(e){ store.status = "unavailable"; return; } /* 保存領域そのものが使えない */
+  if(raw === null){ store.status = "empty"; return; }
+  rawAtLoad = raw; /* Phase D */
+  var obj;
+  try{ obj = JSON.parse(raw); }catch(e){ lockStore("保存データが壊れていて読み込めません"); return; }
+  var why = storedProblem(obj);
+  if(why){ lockStore(why); return; }
+  var parsed;
+  try{ parsed = validateBackup(obj); }catch(e){ lockStore("保存データを読み込めません"); return; }
+  if(!parsed.ok){ lockStore(parsed.reason); return; }
+  state.items = parsed.items; state.myPresets = parsed.myPresets; state.settings = parsed.settings; store.status = "ok"; rawAtLoad = null; /* Phase D：正常時は保持しない */
+}
+/* 異常データの判定（元データは読むだけで、書き換えない） */
+function storedProblem(o){
+  if(!o || typeof o!=="object" || Array.isArray(o)) return "保存データの形式が正しくありません";
+  if(o.app!==APP_ID) return "このアプリの保存データではありません";
+  if(o.schemaVersion!==SCHEMA) return (typeof o.schemaVersion==="number" && o.schemaVersion>SCHEMA) ? "新しい版のアプリで保存されたデータです" : "対応していない版の保存データです";
+  if(!Array.isArray(o.items)) return "登録データが見つかりません";
+  if(o.items.length>LIMITS.items) return "登録が上限（"+LIMITS.items+"件）を超えています";
+  var bad = o.items.filter(function(x){ return !x || typeof x!=="object" || !str(x.name, LIMITS.name); }).length;
+  if(bad) return "名前のない、または形式が正しくない登録が"+bad+"件あります";
+  return "";
+}
+function lockStore(reason){ store.status = "locked"; store.reason = reason; }
+/* 保存禁止中なら案内を出して true（呼び出し側は何も変更せずに戻る） */
+function storeLocked(){ if(store.status!=="locked") return false; toast(LOCK_TOAST); return true; }
+function save(){
+  if(store.status==="locked"){ toast(LOCK_TOAST); return false; } /* Phase A：保存の共通入口で書き込み禁止 */
+  try{ window.localStorage.setItem(STORE_KEY, JSON.stringify(exportObj())); return true; }
+  catch(e){ toast("保存できませんでした。ブラウザの設定を確認してください"); return false; }
+}
+/* Phase C：変更後の状態 next を保存できたときだけ確定する。失敗・保存禁止のときは確定状態を元のまま戻す */
+function commit(next){ var prev=state; state=next; if(save()) return true; state=prev; return false; }
+function cloneState(){ return JSON.parse(JSON.stringify(state)); }
+function exportObj(){
+  return {app:APP_ID, schemaVersion:SCHEMA, exportedAt:new Date().toISOString(), items:state.items, myPresets:state.myPresets, settings:state.settings};
+}
+
+/* ===== 読み込みチェック（守りの3層目） ===== */
+function str(v, max){ if(typeof v!=="string") return ""; v=v.replace(/[\u0000-\u001F\u007F]/g," ").trim(); return v.slice(0,max); }
+function oneOf(v, list, def){ for(var i=0;i<list.length;i++){ if(list[i]===v) return v; } return def; }
+function ids(pairs){ return pairs.map(function(p){return p[0];}); }
+function safeUrl(v){ v=str(v, LIMITS.url); if(!v) return ""; if(!/^https:\/\/[^\s"'<>]+$/i.test(v)) return ""; return v; }
+function intIn(v, lo, hi){ var n = typeof v==="number" ? v : parseInt(v,10); if(!isFinite(n)) return null; n=Math.round(n); if(n<lo||n>hi) return null; return n; }
+function cleanItem(o){
+  if(!o || typeof o!=="object") return null;
+  var name = str(o.name, LIMITS.name); if(!name) return null;
+  var b = (o.billing && typeof o.billing==="object") ? o.billing : {};
+  var cycle = oneOf(b.cycle, ["monthly","yearly","free"], "monthly");
+  var a = (o.account && typeof o.account==="object") ? o.account : {};
+  var l = (o.links && typeof o.links==="object") ? o.links : {};
+  return {
+    id: /^[a-z0-9_-]{4,40}$/i.test(o.id||"") ? o.id : newId(),
+    presetId: /^[a-z0-9_-]{1,40}$/i.test(o.presetId||"") ? o.presetId : null,
+    name: name,
+    plan: str(o.plan, LIMITS.plan),
+    category: oneOf(o.category, CATS.map(function(c){return c.id;}), "other"),
+    status: oneOf(o.status, ids(STATUSES), "active"),
+    billing: {
+      cycle: cycle,
+      amount: cycle==="free" ? 0 : (intIn(b.amount,0,10000000)||0),
+      month: cycle==="yearly" ? intIn(b.month,1,12) : null,
+      day: cycle==="free" ? null : intIn(b.day,1,31)
+    },
+    payment: oneOf(o.payment, ids(PAYMENTS), "card"),
+    links: {cancel: safeUrl(l.cancel), contact: safeUrl(l.contact)},
+    account: {email: str(a.email, LIMITS.email), nickname: str(a.nickname, LIMITS.nickname), login: oneOf(a.login, ids(LOGINS), "")},
+    memo: str(o.memo, LIMITS.memo),
+    checkedAt: /^\d{4}-\d{2}-\d{2}$/.test(o.checkedAt||"") ? o.checkedAt : "",
+    updatedAt: typeof o.updatedAt==="string" ? o.updatedAt.slice(0,40) : new Date().toISOString()
+  };
+}
+function validateBackup(obj){
+  if(!obj || typeof obj!=="object") return {ok:false, reason:"形式が正しくありません"};
+  if(obj.app!==APP_ID) return {ok:false, reason:"このアプリのバックアップではありません"};
+  if(obj.schemaVersion!==SCHEMA) return {ok:false, reason:"対応していない版のバックアップです"};
+  if(!Array.isArray(obj.items)) return {ok:false, reason:"登録データが見つかりません"};
+  if(obj.items.length>LIMITS.items) return {ok:false, reason:"件数が多すぎます（上限"+LIMITS.items+"件）"};
+  var items = obj.items.map(cleanItem).filter(Boolean);
+  var mp = Array.isArray(obj.myPresets) ? obj.myPresets.slice(0,LIMITS.myPresets).map(function(p){
+    if(!p||typeof p!=="object") return null; var n=str(p.name,LIMITS.name); if(!n) return null;
+    return {name:n, cat:oneOf(p.cat, CATS.map(function(c){return c.id;}), "other")};
+  }).filter(Boolean) : [];
+  var s = (obj.settings && typeof obj.settings==="object") ? obj.settings : {};
+  return {ok:true, items:items, myPresets:mp, settings:{ownerName:str(s.ownerName,LIMITS.ownerName), mask:s.mask!==false}};
+}
+
+/* ===== 便利関数 ===== */
+function newId(){ var a=""; var c="abcdefghijklmnopqrstuvwxyz0123456789"; for(var i=0;i<8;i++){ a+=c.charAt(Math.floor(Math.random()*c.length)); } return "i_"+a; }
+function cat(id){ for(var i=0;i<CATS.length;i++){ if(CATS[i].id===id) return CATS[i]; } return CATS[CATS.length-1]; }
+function label(pairs, id){ for(var i=0;i<pairs.length;i++){ if(pairs[i][0]===id) return pairs[i][1]; } return ""; }
+function yen(n){ return Math.round(n).toLocaleString("ja-JP"); }
+function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function pad(n){ return (n<10?"0":"")+n; }
+function lastDay(y,m){ return new Date(y,m+1,0).getDate(); }
+function isPaid(it){ return it.billing.cycle!=="free"; }
+function monthly(it){ if(it.billing.cycle==="monthly") return it.billing.amount; if(it.billing.cycle==="yearly") return it.billing.amount/12; return 0; }
+function nextRenewal(it){
+  var b=it.billing; if(b.cycle==="free"||!b.day) return null;
+  var now=new Date(); var t=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(b.cycle==="monthly"){
+    for(var k=0;k<2;k++){ var y=t.getFullYear(), m=t.getMonth()+k; var d=new Date(y,m,1); var dd=Math.min(b.day,lastDay(d.getFullYear(),d.getMonth())); var c=new Date(d.getFullYear(),d.getMonth(),dd); if(c>=t) return c; }
+  }
+  if(b.cycle==="yearly" && b.month){
+    for(var j=0;j<2;j++){ var yy=t.getFullYear()+j; var d2=Math.min(b.day,lastDay(yy,b.month-1)); var c2=new Date(yy,b.month-1,d2); if(c2>=t) return c2; }
+  }
+  return null;
+}
+function daysUntil(d){ if(!d) return null; var now=new Date(); var t=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return Math.round((d-t)/86400000); }
+function md(d){ return (d.getMonth()+1)+"/"+d.getDate(); }
+function renewText(it){
+  var b=it.billing; if(b.cycle==="free") return "無料";
+  if(!b.day) return "更新日 未設定";
+  var n=nextRenewal(it); return n ? "次回 "+md(n) : "更新日 未設定";
+}
+function cycleText(it){ var b=it.billing; if(b.cycle==="monthly") return b.day?"毎月"+b.day+"日":"毎月（日付未設定）"; if(b.cycle==="yearly") return (b.month&&b.day)?"毎年"+b.month+"月"+b.day+"日":"毎年（日付未設定）"; return "―"; }
+function unit(it){ return it.billing.cycle==="yearly"?"年":"月"; }
+function windowText(it){
+  if(it.payment==="appstore") return "iPhoneの「設定」";
+  if(it.payment==="googleplay") return "Google Playの定期購入";
+  if(it.payment==="carrier") return it.name+"のサイト、または携帯会社";
+  return it.name+"のサイト";
+}
+function mask(email){
+  if(!email) return "";
+  var at=email.indexOf("@"); if(at<1) return email.slice(0,2)+"****";
+  return email.slice(0,Math.min(2,at))+"****"+email.slice(at);
+}
+function byId(id){ for(var i=0;i<state.items.length;i++){ if(state.items[i].id===id) return state.items[i]; } return null; }
+
+/* 要素づくり：利用者の入力は必ず文字として入れる（innerHTMLは使わない） */
+function h(tag, props){
+  var el=document.createElement(tag);
+  if(props){ for(var k in props){ if(!Object.prototype.hasOwnProperty.call(props,k)) continue; var v=props[k];
+    if(v===null||v===undefined||v===false) continue;
+    if(k==="class") el.className=v;
+    else if(k==="text") el.textContent=v;
+    else if(k==="style") el.setAttribute("style",v);
+    else if(k.slice(0,2)==="on") el.addEventListener(k.slice(2),v);
+    else el.setAttribute(k, v===true?"":v);
+  } }
+  for(var i=2;i<arguments.length;i++){ add(el, arguments[i]); }
+  return el;
+}
+function add(el, c){ if(c===null||c===undefined||c===false) return; if(Array.isArray(c)){ c.forEach(function(x){add(el,x);}); return; } if(typeof c==="string"||typeof c==="number"){ el.appendChild(document.createTextNode(String(c))); return; } el.appendChild(c); }
+var SVGNS="http://www.w3.org/2000/svg";
+function icon(paths, color, size, sw){
+  var s=document.createElementNS(SVGNS,"svg"); s.setAttribute("width",size||22); s.setAttribute("height",size||22); s.setAttribute("viewBox","0 0 24 24"); s.setAttribute("fill","none"); s.setAttribute("stroke",color||"currentColor"); s.setAttribute("stroke-width",sw||2.2); s.setAttribute("stroke-linecap","round"); s.setAttribute("stroke-linejoin","round"); s.setAttribute("aria-hidden","true");
+  paths.forEach(function(p){ var e=document.createElementNS(SVGNS,p[0]); for(var k in p[1]){ e.setAttribute(k,p[1][k]); } s.appendChild(e); });
+  return s;
+}
+var I = {
+  plus:[["path",{d:"M12 5v14M5 12h14"}]],
+  back:[["path",{d:"M15 5l-7 7 7 7"}]],
+  subs:[["rect",{x:"4",y:"5",width:"16",height:"14",rx:"3"}],["path",{d:"M8 10h8M8 14h5"}]],
+  reg:[["path",{d:"M6 4h10l3 3v13H6z"}],["path",{d:"M9 11h7M9 15h7"}]],
+  gear:[["circle",{cx:"12",cy:"12",r:"3"}],["path",{d:"M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"}]],
+  search:[["circle",{cx:"11",cy:"11",r:"6"}],["path",{d:"M20 20l-4.5-4.5"}]],
+  ext:[["path",{d:"M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"}]],
+  down:[["path",{d:"M12 4v11M7 10l5 5 5-5M5 20h14"}]],
+  chev:[["path",{d:"M6 9l6 6 6-6"}]],
+  right:[["path",{d:"M9 5l7 7-7 7"}]],
+  shield:[["path",{d:"M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"}],["path",{d:"M8.5 12l2.5 2.5 4.5-5"}]]
+};
+function catIcon(c, ch, size){ var s=size||38; return h("span",{class:"ic",style:"background:"+c.color+";color:"+c.fg+";width:"+s+"px;height:"+s+"px;border-radius:"+Math.round(s*0.27)+"px;font-size:"+Math.round(s*0.42)+"px"}, ch||"?"); }
+function firstChar(name){ var m=name.match(/[A-Za-z0-9]/); return m ? m[0] : name.charAt(0); }
+
+/* ===== トースト・シート ===== */
+var toastTimer=null;
+function toast(msg){
+  var old=document.querySelector(".toast"); if(old) old.remove();
+  var t=h("div",{class:"toast",role:"status"},msg); document.body.appendChild(t);
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.remove(); },2400);
+}
+function openSheet(build){ ui.sheet=build; renderSheet(); }
+function closeSheet(){ ui.sheet=null; renderSheet(); }
+function renderSheet(){
+  var old=document.querySelector(".sheet-bg"); if(old) old.remove();
+  if(!ui.sheet) return;
+  var sheet=h("div",{class:"sheet",role:"dialog","aria-modal":"true"});
+  add(sheet, ui.sheet());
+  var bg=h("div",{class:"sheet-bg",onclick:function(e){ if(e.target===bg) closeSheet(); }}, sheet);
+  document.body.appendChild(bg);
+  var f=sheet.querySelector("button,input,textarea"); if(f) f.focus();
+}
+function confirmSheet(title, body, okLabel, danger, onOk){
+  openSheet(function(){ return [
+    h("div",{class:"h2",text:title}),
+    h("div",{class:"note",style:"font-size:14px",text:body}),
+    h("button",{class:"btn"+(danger?" danger":""),onclick:function(){ closeSheet(); onOk(); }}, okLabel),
+    h("button",{class:"btn sec2",onclick:closeSheet},"やめる")
+  ]; });
+}
+
+/* ===== 画面切り替え ===== */
+function go(screen, extra){ ui.screen=screen; if(extra){ for(var k in extra){ ui[k]=extra[k]; } } render(); window.scrollTo(0,0); afterNav(); }
+/* 一覧の一時UI状態（永続データには保存しない） */
+function listSnapshot(){ return {screen:ui.screen, homeSearch:!!ui.homeSearch, hq:ui.hq||"", allSoon:!!ui.allSoon, allRecent:!!ui.allRecent, showCancelled:!!ui.showCancelled, scrollY:window.scrollY||0}; }
+function openDetail(id){ ui.listSnap=listSnapshot(); go("detail",{id:id}); }
+function backToList(target){
+  var sn=ui.listSnap; ui.listSnap=null;
+  if(sn && sn.screen===target){ ui.homeSearch=sn.homeSearch; ui.hq=sn.hq; ui.allSoon=sn.allSoon; ui.allRecent=sn.allRecent; ui.showCancelled=sn.showCancelled; ui.restoreScroll=sn.scrollY; }
+  go(target);
+}
+function resetTempUi(){ ui.homeSearch=false; ui.hq=""; ui.allSoon=false; ui.allRecent=false; ui.showCancelled=false; ui.listSnap=null; ui.flowOrigin=null; ui.q=""; ui.filter="all"; ui.selectScroll=0; ui.restoreScroll=null; }
+/* 画面移動後の位置合わせ（編集欄アンカー）。自動Focus・キーボード表示はしない */
+function afterNav(){
+  if(typeof ui.restoreScroll==="number"){ var y=ui.restoreScroll; ui.restoreScroll=null; window.scrollTo(0,y); }
+  if(ui.screen==="form" && ui.editAnchor){ var el=document.getElementById("fld-"+ui.editAnchor); ui.editAnchor=null; if(el && el.scrollIntoView) el.scrollIntoView({block:"center"}); }
+}
+function setTab(t){ if(ui.tab!==t) resetTempUi(); /* 別トップタブへ移動したら一時状態を終了 */ ui.tab=t; ui.screen=(t==="subs"?"home":t==="reg"?"reg":"settings"); render(); window.scrollTo(0,0); }
+
+function render(){
+  var app=document.getElementById("app");
+  var view;
+  switch(ui.screen){
+    case "home": view=homeView(); break;
+    case "select": view=selectView(); break;
+    case "form": view=formView(); break;
+    case "detail": view=detailView(); break;
+    case "reg": view=regView(); break;
+    case "settings": view=settingsView(); break;
+    case "pdf": view=pdfView(); break;
+    case "backup": view=backupView(); break;
+    case "recovery": view=recoveryView(); break; /* Phase D */
+    default: view=homeView();
+  }
+  app.replaceChildren(view);
+  var sb=storeBanner(); if(sb) view.insertBefore(sb, view.children[1]||null); /* Phase A：保存禁止・保存不可の継続表示 */
+  ui.justOpened=null;
+  if(ui.screen==="form" && ui.focusAmount && !ui.focused){ ui.focused=true; try{ ui.focusAmount.focus(); }catch(e){} }
+}
+/* ===== アイコン（線画・24px・stroke統一） ===== */
+function P(d){ return ["path",{d:d}]; }
+var IC = {
+  back:[P("M15 5l-7 7 7 7")],
+  right:[P("M9 5l7 7-7 7")],
+  down:[P("M6 9l6 6 6-6")],
+  up:[P("M6 15l6-6 6 6")],
+  plus:[P("M12 5v14M5 12h14")],
+  search:[["circle",{cx:"11",cy:"11",r:"6.5"}],P("M20 20l-4.2-4.2")],
+  card:[["rect",{x:"3",y:"5.5",width:"18",height:"13",rx:"2.5"}],P("M3 10h18M7 15h4")],
+  person:[["circle",{cx:"12",cy:"8",r:"4"}],P("M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6")],
+  gear:[["circle",{cx:"12",cy:"12",r:"3"}],P("M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7")],
+  mail:[["rect",{x:"3",y:"5.5",width:"18",height:"13",rx:"2.5"}],P("M4 7l8 6 8-6")],
+  mailoff:[["rect",{x:"3",y:"5.5",width:"18",height:"13",rx:"2.5"}],P("M4 7l8 6 8-6M4 20L20 4")],
+  ext:[P("M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5")],
+  file:[P("M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"),P("M14 3v5h5")],
+  memo:[P("M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"),P("M9 12h6M9 16h6")],
+  cal:[["rect",{x:"3.5",y:"5",width:"17",height:"15",rx:"2.5"}],P("M3.5 10h17M8 3v4M16 3v4")],
+  edit:[P("M4 20h4L19 9l-4-4L4 16z"),P("M13.5 6.5l4 4")],
+  check:[["circle",{cx:"12",cy:"12",r:"8.5"}],P("M8.5 12l2.5 2.5 4.5-5")],
+  tick:[P("M5 12.5l4.5 4.5L19 7.5")],
+  trash:[P("M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6")],
+  shield:[P("M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z")],
+  heart:[P("M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z")],
+  cloud:[P("M7 18h10a4 4 0 0 0 .6-8 5.5 5.5 0 0 0-10.7 1.3A3.4 3.4 0 0 0 7 18z")],
+  share:[P("M12 15V3.5M7.5 8L12 3.5 16.5 8"),P("M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7")],
+  get:[P("M12 3.5V15M7.5 10.5L12 15l4.5-4.5"),P("M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4")],
+  info:[["circle",{cx:"12",cy:"12",r:"8.5"}],P("M12 11v5M12 8h.01")],
+  x:[P("M7 7l10 10M17 7L7 17")],
+  pay:[["rect",{x:"3",y:"5.5",width:"18",height:"13",rx:"2.5"}],P("M3 10h18")],
+  /* カテゴリ */
+  video:[["rect",{x:"3",y:"5",width:"18",height:"14",rx:"3"}],P("M10 9.5v5l4.5-2.5z")],
+  music:[P("M9 18V6l10-2v12"),["circle",{cx:"6.5",cy:"18",r:"2.5"}],["circle",{cx:"16.5",cy:"16",r:"2.5"}]],
+  shop:[P("M5 8h14l-1 12H6z"),P("M9 8V6.5a3 3 0 0 1 6 0V8")],
+  cloudc:[P("M7 18h10a4 4 0 0 0 .6-8 5.5 5.5 0 0 0-10.7 1.3A3.4 3.4 0 0 0 7 18z")],
+  game:[P("M7 8h10a4 4 0 0 1 4 4v1a3.5 3.5 0 0 1-6.3 2.1L14 14h-4l-.7 1.1A3.5 3.5 0 0 1 3 13v-1a4 4 0 0 1 4-4z"),P("M8 10.5v3M6.5 12h3M16 11h.01M17.5 13h.01")],
+  tool:[["rect",{x:"3",y:"7.5",width:"18",height:"12",rx:"2.5"}],P("M9 7.5V5.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 12.5h18")],
+  other:[["rect",{x:"4",y:"4",width:"6.5",height:"6.5",rx:"1.5"}],["rect",{x:"13.5",y:"4",width:"6.5",height:"6.5",rx:"1.5"}],["rect",{x:"4",y:"13.5",width:"6.5",height:"6.5",rx:"1.5"}],["rect",{x:"13.5",y:"13.5",width:"6.5",height:"6.5",rx:"1.5"}]]
+};
+function ic(name, size){ return icon(IC[name], "currentColor", size||22, 1.7); }
+var CATICON={video:"video",music:"music",shop:"shop",cloud:"cloudc",game:"game",tool:"tool",other:"other"};
+function tint(hex,a){ var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return "rgba("+r+","+g+","+b+","+a+")"; }
+/* Service Icon v1.1：共通Dark Plate＋汎用ピクト＋サービス識別Accent（公式ロゴは使わない） */
+function Q(tag,a){ return [tag,a]; }
+var PICT = {
+  /* 「その他」専用の汎用ピクト（12カテゴリはMASTER_SVGを使用） */
+  other:{b:[Q("rect",{x:"4",y:"4",width:"6.5",height:"6.5",rx:"1.5"}),Q("rect",{x:"13.5",y:"4",width:"6.5",height:"6.5",rx:"1.5"}),Q("rect",{x:"4",y:"13.5",width:"6.5",height:"6.5",rx:"1.5"})],a:[Q("rect",{x:"13.5",y:"13.5",width:"6.5",height:"6.5",rx:"1.5"})]}
+};
+function pictSvg(name, size, accent){
+  var d=PICT[name]||PICT.other;
+  var s=document.createElementNS(SVGNS,"svg"); s.setAttribute("width",size); s.setAttribute("height",size); s.setAttribute("viewBox","0 0 24 24"); s.setAttribute("fill","none"); s.setAttribute("stroke-linecap","round"); s.setAttribute("stroke-linejoin","round"); s.setAttribute("stroke-width","1.8"); s.setAttribute("aria-hidden","true");
+  function grp(list, color){ var g=document.createElementNS(SVGNS,"g"); g.setAttribute("stroke",color); list.forEach(function(p){ var e=document.createElementNS(SVGNS,p[0]); for(var k in p[1]) e.setAttribute(k,p[1][k]); g.appendChild(e); }); s.appendChild(g); }
+  if(d.f && d.f.length){ var gf=document.createElementNS(SVGNS,"g"); gf.setAttribute("fill",accent||"#A6A6AA"); gf.setAttribute("stroke","none"); gf.setAttribute("opacity",accent?".9":".55"); d.f.forEach(function(p){ var e=document.createElementNS(SVGNS,p[0]); for(var k in p[1]) e.setAttribute(k,p[1][k]); gf.appendChild(e); }); s.appendChild(gf); }
+  grp(d.b, "#F5F5F3"); grp(d.a, accent||"#F5F5F3");
+  return s;
+}
+/* MASTER_PICT_v1（Google Drive正本の12 SVGをそのまま同梱。形状は変更しない） */
+var MASTER_SVG = {
+"video": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n    <path d=\"M190 145 L190 367 L365 256 Z\" stroke=\"none\"/>\n  </g>\n</svg>",
+"music": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <ellipse cx=\"192.5\" cy=\"342.5\" rx=\"42.5\" ry=\"42.5\" stroke=\"none\"/>\n    <rect x=\"215\" y=\"145\" width=\"40\" height=\"185\" rx=\"18\" stroke=\"none\"/>\n    <path d=\"M250 145 L355 120 L355 165 L250 190 Z\" stroke=\"none\"/>\n    <ellipse cx=\"357.5\" cy=\"292.5\" rx=\"42.5\" ry=\"42.5\" stroke=\"none\"/>\n    <rect x=\"355\" y=\"145\" width=\"40\" height=\"130\" rx=\"18\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"shopping": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <rect x=\"145\" y=\"210\" width=\"222\" height=\"170\" rx=\"28\" stroke=\"none\"/>\n    <path d=\"M205 210 V188 C205 143 239 120 256 120 C273 120 307 143 307 188 V210\" fill=\"none\" stroke-width=\"30\"/>\n\n  </g>\n</svg>",
+"game": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M125 275 L150 205 L215 180 L297 180 L362 205 L387 275 L372 340 L325 345 L285 300 L227 300 L187 345 L140 340 Z\" stroke=\"none\"/>\n    <g fill=\"#000\" stroke=\"none\">\n      <rect x=\"170\" y=\"225\" width=\"20\" height=\"60\" rx=\"6\"/>\n      <rect x=\"150\" y=\"245\" width=\"60\" height=\"20\" rx=\"6\"/>\n      <circle cx=\"332.5\" cy=\"242.5\" r=\"12.5\"/>\n      <circle cx=\"362.5\" cy=\"272.5\" r=\"12.5\"/>\n    </g>\n\n  </g>\n</svg>",
+"learning": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M120 170 L240 185 L240 355 L120 335 Z\" stroke=\"none\"/>\n    <path d=\"M272 185 L392 170 L392 335 L272 355 Z\" stroke=\"none\"/>\n    <rect x=\"246\" y=\"175\" width=\"20\" height=\"190\" rx=\"8\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"ai": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M238 145 C185 152 150 190 145 245 C140 300 165 340 215 355\" fill=\"none\" stroke-width=\"28\"/>\n    <path d=\"M235 150 L205 185 L205 235 L180 260 L215 275\" fill=\"none\" stroke-width=\"28\"/>\n    <path d=\"M315 170 L333 202 L367 220 L333 238 L315 270 L297 238 L263 220 L297 202 Z\" stroke=\"none\"/>\n    <rect x=\"355\" y=\"155\" width=\"20\" height=\"20\" rx=\"4\" stroke=\"none\"/>\n    <rect x=\"380\" y=\"205\" width=\"20\" height=\"20\" rx=\"4\" stroke=\"none\"/>\n    <rect x=\"350\" y=\"270\" width=\"20\" height=\"20\" rx=\"4\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"work": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <rect x=\"120\" y=\"205\" width=\"272\" height=\"155\" rx=\"26\" stroke=\"none\"/>\n    <rect x=\"205\" y=\"150\" width=\"102\" height=\"75\" rx=\"18\" stroke=\"none\"/>\n    <g fill=\"#000\" stroke=\"none\">\n      <rect x=\"120\" y=\"255\" width=\"272\" height=\"20\"/>\n      <rect x=\"238\" y=\"245\" width=\"36\" height=\"40\" rx=\"8\"/>\n    </g>\n\n  </g>\n</svg>",
+"cloud": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <circle cx=\"190\" cy=\"295\" r=\"65\" stroke=\"none\"/>\n    <circle cx=\"270\" cy=\"255\" r=\"75\" stroke=\"none\"/>\n    <circle cx=\"340\" cy=\"290\" r=\"55\" stroke=\"none\"/>\n    <rect x=\"150\" y=\"275\" width=\"215\" height=\"80\" rx=\"35\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"utilities": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M256 120 L175 230 C160 255 168 314 195 350 C215 370 238 382 256 382 C274 382 297 370 317 350 C344 314 352 255 337 230 Z\" stroke=\"none\"/>\n    <path d=\"M270 190 L220 280 L260 280 L235 345 L310 250 L270 250 Z\" fill=\"#000\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"telecom": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M135 225 Q256 115 377 225\" fill=\"none\" stroke-width=\"30\"/>\n    <path d=\"M175 260 Q256 190 337 260\" fill=\"none\" stroke-width=\"30\"/>\n    <path d=\"M215 295 Q256 255 297 295\" fill=\"none\" stroke-width=\"30\"/>\n    <circle cx=\"256\" cy=\"345\" r=\"20\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"map": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <circle cx=\"256\" cy=\"216\" r=\"101\" stroke=\"none\"/>\n    <path d=\"M175 245 L337 245 L256 400 Z\" stroke=\"none\"/>\n    <circle cx=\"256\" cy=\"216\" r=\"36\" fill=\"#000\" stroke=\"none\"/>\n\n  </g>\n</svg>",
+"health": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\" stroke=\"currentColor\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n\n    <path d=\"M256 380 C210 335 140 290 140 220 C140 170 177 140 220 140 C242 140 258 150 272 168 C286 150 302 140 324 140 C367 140 404 170 404 220 C404 290 334 335 288 380 Z\" stroke=\"none\"/>\n    <g fill=\"#000\" stroke=\"none\">\n      <rect x=\"242\" y=\"205\" width=\"28\" height=\"90\" rx=\"6\"/>\n      <rect x=\"210\" y=\"237\" width=\"92\" height=\"28\" rx=\"6\"/>\n    </g>\n\n  </g>\n</svg>"
+};
+/* 保存データのカテゴリID → マスターピクトID（IDは変更せず対応づけのみ） */
+/* OTHER_FALLBACK_RULE_v1：other／未知カテゴリ専用のFallback（13番目のカテゴリではない。Drive正本SVGをそのまま同梱） */
+var OTHER_FALLBACK_SVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\" width=\"512\" height=\"512\">\n  <g fill=\"currentColor\">\n    <rect x=\"145\" y=\"145\" width=\"90\" height=\"90\" rx=\"22\"/>\n    <rect x=\"277\" y=\"145\" width=\"90\" height=\"90\" rx=\"22\"/>\n    <rect x=\"145\" y=\"277\" width=\"90\" height=\"90\" rx=\"22\"/>\n    <rect x=\"277\" y=\"277\" width=\"90\" height=\"90\" rx=\"22\"/>\n  </g>\n</svg>\n";
+var CAT_MASTER = {video:"video", music:"music", shop:"shopping", game:"game", learning:"learning", ai:"ai", tool:"work", cloud:"cloud", utilities:"utilities", telecom:"telecom", map:"map", health:"health"};
+var masterCache = {};
+var MASTER_ENABLED = {video:true, music:true, shop:true, game:true, learning:true, ai:true, tool:true, cloud:true, utilities:true, telecom:true, map:true, health:true};
+function masterSvg(id, size){
+  if(!masterCache[id]){ masterCache[id] = new DOMParser().parseFromString(id==="__other_fallback" ? OTHER_FALLBACK_SVG : MASTER_SVG[id], "image/svg+xml").documentElement; }
+  var el = document.importNode(masterCache[id], true);
+  el.setAttribute("width", size); el.setAttribute("height", size);
+  el.setAttribute("aria-hidden","true"); el.setAttribute("focusable","false");
+  el.style.color = "#F5F5F3";
+  return el;
+}
+var CATPICT={video:"video",music:"music",shop:"shop",cloud:"cloud",game:"game",tool:"tool",learning:"learning",ai:"ai",utilities:"utilities",telecom:"telecom",map:"map",health:"health",other:"other"};
+function tint(hex,a){ var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return "rgba("+r+","+g+","+b+","+a+")"; }
+function mixPlate(hex,a){ var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); var m=function(c,base){ return Math.round(base+(c-base)*a); }; return "rgb("+m(r,0x1D)+","+m(g,0x1D)+","+m(b,0x20)+")"; }
+function catTile(catId, lg, p){
+  var accent = p && p.accent ? p.accent : null;
+  var pict = CATPICT[catId]||"other"; /* カテゴリ = 形（サービス名で形を変えない） */
+  var master = MASTER_ENABLED[catId] ? CAT_MASTER[catId] : "__other_fallback"; /* other／未知カテゴリのみFallback */
+  if(master){
+    /* 図は白（マスターSVGのまま）。サービス差はプレートの薄いTint＋細いBorderのAccentだけ */
+    var st2 = accent ? "background:"+mixPlate(accent,.12)+";border-color:"+tint(accent,.5) : null;
+    return h("span",{class:"icontile"+(lg?" lg":""),"aria-hidden":"true",style:st2}, masterSvg(master, lg?50:38));
+  }
+  var st = accent ? "background:"+mixPlate(accent,.08)+";border-color:"+tint(accent,.35) : null;
+  return h("span",{class:"icontile"+(lg?" lg":""),"aria-hidden":"true",style:st}, pictSvg(pict, lg?30:24, accent));
+}
+/* サービス識別のためのブランド色（アイコン内部の図だけに使う：仕様6章の例外） */
+function presetById(id){ for(var i=0;i<PRESETS.length;i++){ if(PRESETS[i].id===id) return PRESETS[i]; } return null; }
+function brandColor(it){ return it&&it.presetId?presetById(it.presetId):null; }
+function chev(){ return h("span",{class:"chev"}, ic("right",20)); }
+function yenS(n){ return "¥"+yen(n); }
+function jd(d){ return (d.getMonth()+1)+"月"+d.getDate()+"日"; }
+function cycleWord(it){ return it.billing.cycle==="yearly"?"毎年":it.billing.cycle==="monthly"?"毎月":"無料"; }
+function thisMonthPay(list){
+  var m=new Date().getMonth()+1;
+  return list.reduce(function(s,it){ if(it.billing.cycle==="monthly") return s+it.billing.amount; if(it.billing.cycle==="yearly" && it.billing.month===m) return s+it.billing.amount; return s; },0);
+}
+
+function nav(){
+  function b(id, jp, icn){ return h("button",{"aria-current":ui.tab===id?"page":null,"aria-label":jp,onclick:function(){ setTab(id); }}, ic(icn,24), jp); }
+  return h("nav",{class:"nav","aria-label":"メインメニュー"}, h("div",{class:"in"}, b("subs","サブスク","card"), b("reg","登録先","person"), b("settings","設定","gear")));
+}
+function pageHeader(title, actions){
+  return h("header",{class:"appheader"}, h("h1",{class:"pagetitle"},title), h("div",{style:"display:flex;gap:4px"}, actions||null));
+}
+function subHeader(backLabel, onBack, title){
+  return h("header",{class:"appheader sub"},
+    h("button",{class:"backbtn","aria-label":"戻る",onclick:onBack}, ic("back",24), backLabel?h("span",null,backLabel):null),
+    title?h("h1",{class:"headtitle",style:"flex:1;text-align:"+(backLabel?"center;margin-right:52px":"left")},title):h("span"));
+}
+function emptyIll(){
+  var s=document.createElementNS(SVGNS,"svg"); s.setAttribute("viewBox","0 0 120 96"); s.setAttribute("class","ill"); s.setAttribute("fill","none"); s.setAttribute("stroke","currentColor"); s.setAttribute("stroke-width","1.5"); s.setAttribute("aria-hidden","true");
+  [["rect",{x:"14",y:"10",width:"78",height:"70",rx:"10"}],["rect",{x:"24",y:"22",width:"14",height:"12",rx:"3"}],["rect",{x:"24",y:"42",width:"14",height:"12",rx:"3"}],["rect",{x:"24",y:"62",width:"14",height:"10",rx:"3"}],["path",{d:"M46 26h32M46 31h20M46 46h32M46 51h20M46 66h24"}],["circle",{cx:"92",cy:"68",r:"16",fill:"#1D1D20"}],["path",{d:"M92 60v16M84 68h16"}]].forEach(function(p){ var e=document.createElementNS(SVGNS,p[0]); for(var k in p[1]) e.setAttribute(k,p[1][k]); s.appendChild(e); });
+  return s;
+}
+
+/* ===== ホーム ===== */
+function homeView(){
+  var active=state.items.filter(function(it){ return it.status!=="cancelled"; });
+  var paid=active.filter(isPaid);
+  var cancelled=state.items.filter(function(it){ return isPaid(it) && it.status==="cancelled"; });
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,pageHeader("サブスク", state.items.length?[
+    h("button",{class:"iconbtn","aria-label":"サブスクを探す","aria-pressed":ui.homeSearch?"true":"false",onclick:function(){ ui.homeSearch=!ui.homeSearch; if(!ui.homeSearch) ui.hq=""; else ui.focusSearch=true; render(); }}, ic(ui.homeSearch?"x":"search",24)),
+    h("button",{class:"iconbtn","aria-label":"サブスクを追加",onclick:function(){ go("select",{q:"",filter:"all",flowOrigin:"home",listSnap:listSnapshot(),selectScroll:0}); }}, ic("plus",24))]:null));
+  var main=h("main",{class:"main"});
+  if(!state.items.length){
+    add(main,h("div",{class:"empty"}, emptyIll(),
+      h("h2",null,"まだサブスクがありません"),
+      h("p",{class:"sec-text",style:"margin:0"},"最初の1件を登録すると、毎月の支払いと", h("br"), "更新日をまとめて確認できます。"),
+      h("button",{class:"btn",disabled:store.status==="locked",onclick:function(){ go("select",{q:"",filter:"all",flowOrigin:"home",listSnap:listSnapshot(),selectScroll:0}); }}, ic("plus",22), "サブスクを追加"),
+      h("button",{class:"link",disabled:store.status==="locked",style:store.status==="locked"?"opacity:.4;cursor:default":null,onclick:loadSample},"サンプルを入れて試す"),
+      store.status==="locked"?h("p",{class:"sec-text",style:"margin:0;color:var(--color-text-primary)"},"保存を止めているため、追加とサンプル投入はできません。"):null)); /* Phase A.1：保存禁止中だけ無効化 */
+    add(wrap,main); add(wrap,nav()); return wrap;
+  }
+  if(ui.homeSearch){
+    var si=h("input",{type:"search",placeholder:"サービス名で探す","aria-label":"サービス名で探す",value:ui.hq||""});
+    var res=h("div",{class:"stack8"});
+    var run=function(){ var q=(ui.hq||"").trim().toLowerCase(); var list=state.items.filter(function(it){ return !q || it.name.toLowerCase().indexOf(q)>=0; });
+      res.replaceChildren.apply(res, list.length?list.map(function(it){ return subRow(it); }):[h("p",{class:"sec-text",style:"margin:0"},"見つかりませんでした。")]); };
+    si.addEventListener("input",function(){ ui.hq=si.value; run(); });
+    add(main,h("div",{class:"stack"}, h("label",{class:"search"}, ic("search",22), si), res));
+    run();
+    add(wrap,main); add(wrap,nav());
+    if(ui.focusSearch){ ui.focusSearch=false; setTimeout(function(){ try{ si.focus(); }catch(e){} },0); } /* 検索を開いた時だけFocus。詳細から戻る復元時はFocusしない */
+    return wrap;
+  }
+  var now=new Date();
+  var monthlyEq=paid.reduce(function(s,it){ return s+monthly(it); },0);
+  add(main,h("section",{class:"summary","aria-label":"今月の支払い"},
+    h("div",{class:"top"}, h("span",{style:"font-size:16px;font-weight:600"},"今月の支払い"), h("span",{class:"micro"},(now.getMonth()+1)+"月の合計")),
+    h("div",{class:"bigamt"}, yenS(thisMonthPay(paid))),
+    h("div",{class:"divider"}),
+    h("div",{class:"cols3"},
+      h("div",null, h("span",{class:"micro"},"月額換算合計"), h("b",null,yenS(monthlyEq))),
+      h("div",null, h("span",{class:"micro"},"年間合計"), h("b",null,yenS(monthlyEq*12))),
+      h("div",null, h("span",{class:"micro"},"登録中"), h("b",null,paid.length+"件")))));
+  var upcoming=paid.map(function(it){ return {it:it,n:nextRenewal(it)}; }).filter(function(x){ return x.n; }).sort(function(a,b){ return a.n-b.n; });
+  if(upcoming.length){
+    var ul=h("div",{class:"stack8"});
+    (ui.allSoon?upcoming:upcoming.slice(0,2)).forEach(function(x,i){ var r=renewRow(x.it,x.n); if(i>=2 && ui.justOpened==="soon") r.classList.add("reveal"); add(ul,r); });
+    add(main,h("section",{class:"stack"}, h("div",{class:"sechead"}, h("h2",{class:"sectitle"},"次回更新"),
+      upcoming.length>2?toggleBtn(ui.allSoon,function(){ ui.allSoon=!ui.allSoon; ui.justOpened=ui.allSoon?"soon":null; render(); }):null), ul));
+  }
+  add(main,h("button",{class:"btn",onclick:function(){ go("select",{q:"",filter:"all",flowOrigin:"home",listSnap:listSnapshot(),selectScroll:0}); }}, ic("plus",22), "サブスクを追加"));
+  var recent=active.slice().reverse();
+  var rl=h("div",{class:"stack8"});
+  (ui.allRecent?recent:recent.slice(0,3)).forEach(function(it,i){ var r=subRow(it); if(i>=3 && ui.justOpened==="recent") r.classList.add("reveal"); add(rl,r); });
+  add(main,h("section",{class:"stack"}, h("div",{class:"sechead"}, h("h2",{class:"sectitle"},"最近追加したサブスク"),
+    recent.length>3?toggleBtn(ui.allRecent,function(){ ui.allRecent=!ui.allRecent; ui.justOpened=ui.allRecent?"recent":null; render(); }):null), rl));
+  if(cancelled.length){
+    var cl=h("div",{class:"stack8"});
+    if(ui.showCancelled) cancelled.forEach(function(it){ add(cl,subRow(it)); });
+    add(main,h("section",{class:"stack"}, h("button",{class:"btn2",onclick:function(){ ui.showCancelled=!ui.showCancelled; render(); }}, (ui.showCancelled?"解約済みを閉じる":"解約済みを見る（"+cancelled.length+"件）")), cl));
+  }
+  add(wrap,main); add(wrap,nav());
+  return wrap;
+}
+/* 同じ画面内での開閉（別画面へは進まないので right chevron は使わない） */
+function toggleBtn(open, fn){ return h("button",{class:"morebtn","aria-expanded":open?"true":"false",onclick:fn}, open?"閉じる":"もっと見る", ic(open?"up":"down",18)); }
+function renewRow(it, n){
+  var dd=daysUntil(n);
+  return h("button",{class:"row renew",onclick:function(){ openDetail(it.id); }},
+    h("span",{class:"date"}, h("b",null,jd(n)), h("span",{class:"micro",style:dd!==null&&dd<=7?"color:var(--color-text-primary);font-weight:600":null}, dd===0?"今日更新":(dd<=7?"あと"+dd+"日":"次回更新"))),
+    catTile(it.category,false,brandColor(it)),
+    h("span",{class:"rbody"},
+      h("b",{class:"rname"},it.name),
+      h("span",{class:"rmeta"}, h("span",{class:"sec-text"},cat(it.category).label), h("span",{class:"ramt"}, h("b",null,yenS(it.billing.amount)), h("span",{class:"sec-text"}," / "+cycleWord(it))))),
+    chev());
+}
+function subRow(it){
+  var n=nextRenewal(it);
+  return h("button",{class:"row",onclick:function(){ openDetail(it.id); }},
+    catTile(it.category,false,brandColor(it)),
+    h("span",{class:"t"}, h("b",null,it.name), h("span",{class:"sec-text"},cat(it.category).label+(it.status==="cancelling"?"・解約予定":it.status==="cancelled"?"・解約済み":""))),
+    h("span",{class:"r"}, isPaid(it)?h("b",null,yenS(it.billing.amount)):h("b",{style:"color:var(--color-text-secondary)"},"無料"),
+      isPaid(it)?h("span",{class:"sec-text"}, n?"次回 "+jd(n):"更新日 未設定"):null),
+    chev());
+}
+function storeBanner(){
+  if(store.status!=="locked" && store.status!=="unavailable") return null;
+  var locked = store.status==="locked";
+  return h("div",{class:"infocard",role:"status",style:"margin:0 var(--s20) var(--s16);border-color:"+(locked?"rgba(216,76,76,.6)":"var(--color-border-strong)")},
+    h("span",{style:"color:"+(locked?"var(--color-danger)":"var(--color-text-secondary)")+";display:flex"},ic("info",22)),
+    h("div",{class:"stack8",style:"gap:4px;min-width:0"},
+      h("b",{style:"font-size:15px"}, locked?"保存データを読み込めませんでした":"この端末では保存できません"),
+      h("span",{class:"sec-text"}, locked ? store.reason+"。データを守るため保存を止めています。元のデータは消さずに残しています。"
+        : "ブラウザの設定（プライベートブラウズなど）で保存領域が使えません。入力した内容は保存されません。"),
+      (locked && ui.screen!=="recovery") ? h("button",{class:"btn2",style:"margin-top:8px",onclick:openRecovery},"復旧の手順を見る") : null)); /* Phase D */
+}
+/* ===== Phase D：異常データからの復旧（保存禁止中だけ使う。状態はすべて画面を開いている間だけ保持し、保存しない） ===== */
+var RECOVERY_SHOW_LIMIT = 100000; /* 10万文字を超える元データは、利用者が選んだときだけ全文を表示（暫定値） */
+var rec = null;
+function recFresh(raw){ return {raw:raw, len:raw.length, showRaw:false, verified:false, selfOk:false, mismatch:"", changed:false, dead:false, grant:null, result:null, keep:null, showKeep:false, importText:""}; }
+function openRecovery(){
+  if(store.status!=="locked" || typeof rawAtLoad!=="string") return;
+  var cur; try{ cur = window.localStorage.getItem(STORE_KEY); }catch(e){ toast("保存領域を読み取れないため、復旧の手順を始められません"); return; }
+  if(cur!==rawAtLoad){ toast("保存データが起動後に変わりました。アプリを開き直してください"); return; }
+  if(!rec || rec.raw!==cur) rec = recFresh(cur);
+  go("recovery");
+}
+/* 別のタブで保存データが変わったら、照合と確認を取り消す（完全な競合防止ではない） */
+window.addEventListener("storage", function(e){
+  if(!rec || (e.key!==STORE_KEY && e.key!==null)) return;
+  rec.verified=false; rec.selfOk=false; rec.grant=null; rec.changed=true;
+  if(ui.screen==="recovery") render();
+});
+/* Importの判定（通常のImportと復旧Importで共通。通常Importの受け入れ条件は従来どおり） */
+function checkBackupText(text){
+  var parsed, raw;
+  try{ raw=JSON.parse(text); parsed=validateBackup(raw);
+    if(parsed.ok){ var bad=raw.items.filter(function(x){ return !x || typeof x!=="object" || !str(x.name, LIMITS.name); }).length; /* Phase A.1 */
+      if(bad) parsed={ok:false,reason:"名前のない（または空白だけの）項目が"+bad+"件あるため、読み込みを中止しました。一部だけを読み込むことはしません"}; }
+  }catch(e){ parsed={ok:false,reason:"文字の形式が正しくありません。コピーし損ねていないか確認してください"}; }
+  return {result:parsed, obj:raw};
+}
+/* 復旧Importだけの追加検査：読み込みで情報が失われる変換があれば拒否する */
+function lossOf(src, norm, path, out){
+  if(src===null || src===undefined || src==="") return;
+  if(typeof src==="object" && !Array.isArray(src)){
+    for(var k in src){ if(Object.prototype.hasOwnProperty.call(src,k)) lossOf(src[k], (norm && typeof norm==="object") ? norm[k] : undefined, path+"."+k, out); }
+    return;
+  }
+  if(src!==norm) out.push(path);
+}
+function recoveryImportProblems(obj, parsed){
+  var out=[], why=[];
+  var top=["app","schemaVersion","exportedAt","items","myPresets","settings"];
+  for(var k in obj){ if(Object.prototype.hasOwnProperty.call(obj,k) && top.indexOf(k)<0) out.push(k); }
+  var seen={}, dup=0;
+  obj.items.forEach(function(x){ if(typeof x.id==="string" && x.id){ if(seen[x.id]) dup++; seen[x.id]=1; } });
+  if(dup) why.push("IDが重複している登録が"+dup+"件あります");
+  obj.items.forEach(function(x,i){ lossOf(x, parsed.items[i], "items["+i+"]", out); });
+  var mp = Array.isArray(obj.myPresets) ? obj.myPresets : [];
+  if(obj.myPresets!==undefined && !Array.isArray(obj.myPresets)) out.push("myPresets");
+  if(mp.length>LIMITS.myPresets) why.push("自分で追加したサービスが"+LIMITS.myPresets+"件を超えています（"+mp.length+"件）");
+  if(mp.length!==parsed.myPresets.length && mp.length<=LIMITS.myPresets) why.push("名前のない、または形式が正しくない「自分で追加したサービス」が"+(mp.length-parsed.myPresets.length)+"件あります");
+  if(mp.length===parsed.myPresets.length) mp.forEach(function(p,i){ lossOf(p, parsed.myPresets[i], "myPresets["+i+"]", out); });
+  if(obj.settings!==undefined) lossOf(obj.settings, parsed.settings, "settings", out);
+  if(out.length) why.push("読み込むと内容が変わる・失われる項目が"+out.length+"か所あります（金額・長さの上限、リンク、日付、未対応の値など）");
+  return why;
+}
+/* 復旧専用の書き込み。通常の save()/commit() は使わず、保存禁止状態も変えない。
+   全条件と許可（1回限り・種類別）を確認し、直前に元データを読み直してから1回だけ書き込む。結果は A〜E */
+function recoveryWrite(kind, grant, expected){
+  var ok = !!(rec && grant && rec.grant===grant && grant.kind===kind);
+  if(rec) rec.grant=null; /* 許可は成否にかかわらずここで失効 */
+  if(!ok) return {code:"A", why:"許可がないため中止しました。書き込みは行っていません"};
+  if(store.status!=="locked" || !rec.verified || !rec.selfOk || rec.changed || rec.dead || typeof rec.raw!=="string")
+    return {code:"A", why:"復旧の条件がそろっていないため中止しました。書き込みは行っていません"};
+  if(kind==="import" && !expected) return {code:"A", why:"読み込む内容がないため中止しました。書き込みは行っていません"};
+  var cur; try{ cur=window.localStorage.getItem(STORE_KEY); }catch(e){ return {code:"A", why:"保存領域を読み取れないため中止しました。書き込みは行っていません"}; }
+  if(cur!==rec.raw){ rec.changed=true; rec.verified=false; rec.selfOk=false; return {code:"A", why:"保存データが別の画面で変わったため中止しました。書き込みは行っていません。アプリを開き直して、最初からやり直してください"}; }
+  var text = kind==="import" ? JSON.stringify({app:APP_ID, schemaVersion:SCHEMA, exportedAt:new Date().toISOString(), items:expected.items, myPresets:expected.myPresets, settings:expected.settings}) : null;
+  try{ if(kind==="import") window.localStorage.setItem(STORE_KEY, text); else window.localStorage.removeItem(STORE_KEY); }
+  catch(e){
+    var after; try{ after=window.localStorage.getItem(STORE_KEY); }catch(e2){ after=undefined; }
+    if(after===rec.raw) return {code:"B", why:"書き込めませんでした。保存データは変わっていないことを確認しました"};
+    rec.dead=true; return {code:"C", why:"書き込みに失敗し、保存データの状態を確認できませんでした。元のデータが残っているかどうかはわかりません。保管した元データとバックアップは消さずに、アプリを開き直して表示を確かめてください"};
+  }
+  var back; try{ back=window.localStorage.getItem(STORE_KEY); }catch(e){ rec.dead=true; return {code:"C", why:"書き込みは行いましたが、確認のための読み直しができませんでした。元のデータが残っているかどうかはわかりません。保管した元データとバックアップは消さずに、アプリを開き直して表示を確かめてください"}; }
+  var verified=false;
+  if(kind==="delete") verified = (back===null);
+  else if(back===text){
+    try{ var o=JSON.parse(back); var p=validateBackup(o);
+      verified = !storedProblem(o) && p.ok && JSON.stringify(p.items)===JSON.stringify(expected.items) && JSON.stringify(p.myPresets)===JSON.stringify(expected.myPresets) && JSON.stringify(p.settings)===JSON.stringify(expected.settings);
+    }catch(e){ verified=false; }
+  }
+  if(!verified){ rec.dead=true; return {code:"D", why:"読み直した内容が、書き込もうとした内容と一致しませんでした。元のデータが残っているとは限りません。保管した元データとバックアップは消さずに、アプリを開き直してください"}; }
+  /* E：書き込み・読み直し・検証がすべて成功したときだけ正常状態へ */
+  if(kind==="import"){ state={items:expected.items, myPresets:expected.myPresets, settings:expected.settings}; store.status="ok"; }
+  else { state={items:[],myPresets:[],settings:{ownerName:"",mask:true}}; store.status="empty"; }
+  store.reason=""; rawAtLoad=null;
+  return {code:"E", why: kind==="import" ? "復旧しました。"+expected.items.length+"件を読み込みました" : "元のデータを消しました。新しく使い始められます"};
+}
+function finishRecovery(kind, r){
+  var keep = (kind==="import" && (r.code==="C"||r.code==="D")) ? rec.importText : null;
+  if(r.code==="E"){ rec=null; go("home"); toast(r.why); return; } /* 検証まで成功したときだけ完了を表示 */
+  rec.result=r; if(keep!==null) rec.keep=keep;
+  render();
+}
+function recoveryView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(null,function(){ go("home"); },"保存データの復旧"));
+  var main=h("main",{class:"main",style:"gap:24px"});
+  if(!rec || store.status!=="locked"){ add(main,h("p",{class:"sec-text",style:"margin:0"},"復旧が必要なデータはありません。")); add(wrap,main); return wrap; }
+  var stop = rec.changed || rec.dead;
+  if(rec.result) add(main,h("div",{class:"infocard",role:"alert",style:"border-color:"+(rec.result.code==="B"?"var(--color-border-strong)":"rgba(216,76,76,.6)")},
+    h("div",{class:"stack8",style:"gap:4px;min-width:0"}, h("b",{style:"font-size:15px"}, rec.result.code==="A"?"中止しました":rec.result.code==="B"?"書き込めませんでした":"確認できませんでした"), h("span",{class:"sec-text"},rec.result.why))));
+  if(rec.changed) add(main,h("div",{class:"infocard",role:"alert",style:"border-color:rgba(216,76,76,.6)"}, h("span",{class:"sec-text"},"保存データが別の画面で変更されたため、照合と確認を取り消しました。アプリを開き直して、最初からやり直してください。同時に別のタブで開かないでください。")));
+  if(rec.keep!==null){
+    var ks=h("section",{class:"stack8"}, h("b",null,"読み込もうとしたバックアップ"), h("p",{class:"sec-text",style:"margin:0"},"個人情報を含むことがあるため、選んだときだけ表示します。画面を閉じると消えます。"),
+      h("button",{class:"btn2",onclick:function(){ rec.showKeep=!rec.showKeep; render(); }}, rec.showKeep?"隠す":"表示する"));
+    if(rec.showKeep){ var kt=h("textarea",{class:"inp",readonly:true,"aria-label":"読み込もうとしたバックアップ",style:"font-family:var(--mono);font-size:12px"}); kt.value=rec.keep; add(ks,kt); }
+    add(main,ks);
+  }
+  /* 1 原因と現状 */
+  add(main,h("section",{class:"stack8"}, h("h2",{class:"sectitle"},"1. 原因と現状"),
+    h("p",{class:"sec-text",style:"margin:0"}, store.reason+"。元のデータはこの端末に残っています。消していません。データの量："+rec.len.toLocaleString("ja-JP")+"文字")));
+  if(stop){ add(wrap,main); return wrap; }
+  /* 2 元データの書き出し */
+  var s2=h("section",{class:"stack8"}, h("h2",{class:"sectitle"},"2. 元のデータを書き出す"),
+    h("p",{class:"sec-text",style:"margin:0"},"メモアプリなど、このブラウザ以外の場所に貼り付けて保存してください。ブラウザのデータを消すと、ここに残っている元のデータも消えます。"));
+  if(rec.len>RECOVERY_SHOW_LIMIT && !rec.showRaw){
+    add(s2,h("p",{class:"sec-text",style:"margin:0;color:var(--color-text-primary)"},"大きなデータです（"+rec.len.toLocaleString("ja-JP")+"文字）。表示に時間がかかったり、端末の動きが重くなったりすることがあります。"));
+    add(s2,h("button",{class:"btn2",onclick:function(){ rec.showRaw=true; render(); }},"全文を表示する"));
+  } else {
+    var rt=h("textarea",{class:"inp",readonly:true,"aria-label":"元のデータ",style:"font-family:var(--mono);font-size:12px"}); rt.value=rec.raw;
+    add(s2,rt); add(s2,h("button",{class:"btn2",onclick:function(){ copyText(rec.raw, rt); }},"すべてコピー"));
+  }
+  add(s2,h("p",{class:"micro",style:"margin:0"},"コピーできないときは、欄を長押しして「すべてを選択」→「コピー」を試してください。それでも書き出せない場合は、元のデータを消さずにこのままにしてください。新しい版のアプリで読み込める場合があります。別のブラウザや端末なら新しく使い始められます（このブラウザのデータはそのまま残ります）。"));
+  add(main,s2);
+  /* 3 貼り戻して照合（完全一致。空白・改行も区別し、補正しない） */
+  var pt=h("textarea",{class:"inp","aria-label":"保管した文字を貼り付け",placeholder:"保管した文字をここに貼り付け",style:"font-family:var(--mono);font-size:12px"});
+  var s3=h("section",{class:"stack8"}, h("h2",{class:"sectitle"},"3. 保管した文字を貼り戻して照合する"), pt,
+    h("button",{class:"btn2",onclick:function(){
+      var v=pt.value; pt.value="";
+      if(v===rec.raw){ rec.verified=true; rec.mismatch=""; }
+      else { rec.verified=false; rec.selfOk=false; var i=0, n=Math.min(v.length,rec.raw.length); while(i<n && v.charCodeAt(i)===rec.raw.charCodeAt(i)) i++;
+        rec.mismatch="一致しません（文字数：元のデータ "+rec.len.toLocaleString("ja-JP")+"／貼り付け "+v.length.toLocaleString("ja-JP")+"、最初に違うのは "+(i+1).toLocaleString("ja-JP")+" 文字目）。もう一度コピーして保管してください"; }
+      render(); }},"照合する"));
+  if(rec.verified) add(s3,h("p",{class:"sec-text",style:"margin:0;color:var(--color-text-primary)"},"保管した文字は元のデータと一致しました。"));
+  else if(rec.mismatch) add(s3,h("p",{class:"sec-text",role:"alert",style:"margin:0;color:var(--color-danger)"},rec.mismatch));
+  add(main,s3);
+  /* 4 保管の自己確認 */
+  var cb=h("input",{type:"checkbox",id:"rec-self",disabled:!rec.verified,checked:rec.selfOk});
+  cb.addEventListener("change",function(){ rec.selfOk=cb.checked && rec.verified; render(); });
+  add(main,h("section",{class:"stack8"}, h("h2",{class:"sectitle"},"4. 保管できたことを確認する"),
+    h("p",{class:"sec-text",style:"margin:0"},"照合でわかるのは、コピーした内容が正しいことだけです。保管先に保存できたかは、アプリからは確認できません。"),
+    h("label",{for:"rec-self",style:"display:flex;gap:12px;align-items:center;min-height:44px"}, cb, h("span",null,"別のアプリに保存し、保存先を開き直して内容が残っていることを確認しました"))));
+  /* 5 復旧方法 */
+  var ready = rec.verified && rec.selfOk;
+  var it=h("textarea",{class:"inp","aria-label":"バックアップの文字を貼り付け",placeholder:"正常なバックアップの文字をここに貼り付け",disabled:!ready}); it.value=rec.importText||"";
+  var im=h("div",{class:"note",role:"alert",style:"color:var(--color-danger);font-size:13px"});
+  add(main,h("section",{class:"stack8"}, h("h2",{class:"sectitle"},"5. 復旧の方法を選ぶ"),
+    ready?null:h("p",{class:"sec-text",style:"margin:0"},"手順3と4が済むまで選べません。"),
+    h("b",null,"バックアップから読み込む"), it, im,
+    h("button",{class:"btn",disabled:!ready,onclick:function(){
+      rec.importText=it.value;
+      var c=checkBackupText(it.value), p=c.result;
+      if(!p.ok){ im.textContent=p.reason; return; }
+      var why=recoveryImportProblems(c.obj, p);
+      if(why.length){ im.textContent="データが失われる可能性があるため、読み込みを中止しました："+why.join("／"); return; }
+      var exp={items:p.items, myPresets:p.myPresets, settings:p.settings};
+      confirmSheet("バックアップから読み込みますか？", p.items.length+"件の登録を読み込みます。","次へ",false,function(){
+        confirmSheet("元のデータを消して置き換えます", "読み込めなかった元のデータ（"+rec.len.toLocaleString("ja-JP")+"文字）を消して、バックアップの内容に置き換えます。元のデータの保管は確認済みです。","元のデータを消して置き換える",true,function(){
+          rec.result=null; var g={kind:"import"}; rec.grant=g; finishRecovery("import", recoveryWrite("import", g, exp)); }); }); }},"内容を確認して読み込む"),
+    h("b",null,"元のデータを消して新しく始める"),
+    h("button",{class:"btn2 danger",disabled:!ready,onclick:function(){
+      confirmSheet("元のデータを消して、新しく始めますか？","登録は0件から始まります。","次へ",false,function(){
+        confirmSheet("元のデータを消します", "読み込めなかった元のデータ（"+rec.len.toLocaleString("ja-JP")+"文字）を消します。元に戻せません。元のデータの保管は確認済みです。","元のデータを消して新しく始める",true,function(){
+          rec.result=null; var g={kind:"delete"}; rec.grant=g; finishRecovery("delete", recoveryWrite("delete", g, null)); }); }); }},"元のデータを消して新しく始める"),
+    h("button",{class:"btn2",onclick:function(){ go("home"); }},"今は何もしない")));
+  add(wrap,main);
+  return wrap;
+}
+function loadSample(){
+  if(storeLocked()) return; /* Phase A */
+  var t=todayISO();
+  var mk=function(p,cat,name,cycle,amt,month,day,pay,email,nick,login){ return cleanItem({id:newId(),presetId:p,name:name,category:cat,status:"active",billing:{cycle:cycle,amount:amt,month:month,day:day},payment:pay,links:{},account:{email:email,nickname:nick,login:login},checkedAt:t}); };
+  var d=new Date(); var soon=function(n){ var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n); return x.getDate(); };
+  var items=[
+    mk("netflix","video","Netflix","monthly",1590,null,soon(3),"card","taro.sample@gmail.com","メインのGmail","email"),
+    mk("icloud","cloud","iCloud+","monthly",130,null,soon(5),"appstore","","",""),
+    mk("spotify","music","Spotify","monthly",980,null,12,"carrier","taro.sample@gmail.com","メインのGmail","google"),
+    mk("unext","video","U-NEXT","monthly",2189,null,20,"card","","",""),
+    mk("amazon-prime","shop","Amazonプライム","yearly",5900,3,10,"card","taro@example.ne.jp","キャリアメール","email"),
+    mk(null,"other","X","free",0,null,null,"card","taro.sample@gmail.com","メインのGmail","google")
+  ];
+  var next=cloneState(); next.items=items;
+  if(!commit(next)) return; /* Phase C */
+  render(); toast("サンプルを入れました（設定からすべて削除できます）");
+}
+
+/* ===== サービス選択（登録ステップ1） ===== */
+function selectView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(null,function(){ var o=(ui.flowOrigin==="reg")?"reg":"home"; ui.q=""; ui.filter="all"; ui.selectScroll=0; ui.flowOrigin=null; backToList(o); },"サービス選択")); /* 登録開始元へ戻り、フローの一時状態を初期化 */
+  var main=h("main",{class:"main"});
+  var top=h("div",{class:"stack"},
+    h("div",{class:"stack8"}, h("h2",{class:"pagetitle"},"何を登録する？"), h("p",{class:"sec-text",style:"margin:0"},"使っているサービスを選ぶか、自分で入力できます。")));
+  var input=h("input",{type:"search",placeholder:"サービス名で探す","aria-label":"サービス名で探す",value:ui.q,enterkeyhint:"search"});
+  input.addEventListener("input",function(){ ui.q=input.value; renderMy(); renderList(); });
+  add(top,h("label",{class:"search"}, ic("search",22), input));
+  var chips=h("div",{class:"chips",role:"group","aria-label":"カテゴリで絞り込む"});
+  [{id:"all",label:"すべて"}].concat(CATS).forEach(function(c){ add(chips,h("button",{class:"chip","aria-pressed":ui.filter===c.id?"true":"false",onclick:function(){ ui.filter=c.id; render(); }}, c.label)); });
+  add(top,chips);
+  add(main,top);
+  var mySec=h("section",{class:"stack"}); add(main,mySec);
+  var listSec=h("section",{class:"stack"}); add(main,listSec);
+  /* 検索・絞り込みを「自分で追加したもの」にも同じように効かせる */
+  function renderMy(){
+    var q=ui.q.trim().toLowerCase();
+    var mine=state.myPresets.filter(function(p){ return (ui.filter==="all"||p.cat===ui.filter) && (!q || p.name.toLowerCase().indexOf(q)>=0); });
+    if(!mine.length){ mySec.replaceChildren(); mySec.hidden=true; return; }
+    mySec.hidden=false;
+    var my=h("div",{class:"grid2"});
+    mine.forEach(function(p){ add(my,svcCard(p.name,p.cat,function(){ startForm({presetId:null,name:p.name,category:p.cat}); })); });
+    mySec.replaceChildren(h("h2",{class:"sectitle"},"自分で追加したもの"), my);
+  }
+  function renderList(){
+    var q=ui.q.trim().toLowerCase();
+    var list=PRESETS.filter(function(p){ return (ui.filter==="all"||p.cat===ui.filter) && (!q || p.name.toLowerCase().indexOf(q)>=0); });
+    var kids=[h("h2",{class:"sectitle"},"よく使われるサービス")];
+    if(list.length){ var g=h("div",{class:"grid2"}); list.forEach(function(p){ add(g,svcCard(p.name,p.cat,function(){ startForm({presetId:p.id,name:p.name,category:p.cat}); },p)); }); kids.push(g); }
+    else kids.push(h("p",{class:"sec-text",style:"margin:0"}, q?"「"+ui.q.trim()+"」は一覧にありません。下のボタンから自分で入力できます。":"このカテゴリには候補がありません。"));
+    kids.push(h("button",{class:"row",style:"min-height:64px",onclick:function(){ startForm({presetId:null,name:ui.q.trim(),category:ui.filter==="all"?"other":ui.filter,manual:true}); }},
+      h("span",{class:"chev",style:"color:var(--color-text-primary)"},ic("plus",24)), h("span",{class:"t"}, h("b",{style:"white-space:normal"}, q&&!list.length?"「"+ui.q.trim().slice(0,20)+"」を自分で入力する":"一覧にないので、自分で入力する")), chev()));
+    listSec.replaceChildren.apply(listSec,kids);
+  }
+  renderMy(); renderList();
+  add(wrap,main);
+  return wrap;
+}
+function svcCard(name, catId, fn, color){
+  return h("button",{class:"scard",onclick:fn}, h("span",{class:"top"}, catTile(catId,false,color), chev()), h("span",{class:"t"}, h("b",null,name), h("span",{class:"sec-text"},cat(catId).label)));
+}
+
+/* ===== 入力（登録ステップ2） ===== */
+function formView(){
+  var d=ui.draft; if(!d){ return homeView(); }
+  var editing=!!d.id;
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(null,function(){ leaveForm(function(){ if(editing) go("detail",{id:d.id}); else go("select",{restoreScroll:ui.selectScroll||0}); }); }, editing?"内容の編集":"サービス情報入力"));
+  var main=h("main",{class:"main withcta"});
+  var form=h("div",{class:"form"});
+  if(d.manual || editing){
+    var nameIn=h("input",{class:"inp",type:"text",maxlength:String(LIMITS.name),value:d.name,placeholder:"例：近所のジム",autocomplete:"off",id:"f-name"});
+    nameIn.addEventListener("input",function(){ d.name=nameIn.value; });
+    add(form,h("div",{class:"field"}, h("label",{class:"flabel",for:"f-name"},"サービス名"), nameIn));
+    var cc=h("div",{class:"chips",role:"group","aria-label":"カテゴリ"});
+    CATS.forEach(function(x){ add(cc,h("button",{class:"chip",type:"button","aria-pressed":d.category===x.id?"true":"false",onclick:function(){ d.category=x.id; render(); }}, x.label)); });
+    add(form,h("div",{class:"field"}, h("span",{class:"flabel"},"カテゴリ"), cc));
+  } else {
+    add(form,h("div",{class:"svchead"}, catTile(d.category,true,brandColor(d)), h("div",{class:"stack8",style:"gap:2px;min-width:0"}, h("b",null,d.name), h("span",{class:"sec-text"},cat(d.category).label))));
+  }
+  var seg=h("div",{class:"seg",role:"group","aria-label":"請求サイクル"});
+  [["monthly","月額"],["yearly","年額"],["free","無料"]].forEach(function(k){ add(seg,h("button",{type:"button","aria-pressed":d.billing.cycle===k[0]?"true":"false",onclick:function(){ d.billing.cycle=k[0]; render(); }}, k[1])); });
+  add(form,h("div",{class:"field"}, h("span",{class:"flabel"},"請求サイクル"), seg));
+  if(d.billing.cycle!=="free"){
+    var amt=h("input",{type:"text",inputmode:"numeric",id:"f-amt",value:d.billing.amount===""?"":yen(parseInt(d.billing.amount,10)||0),placeholder:"0"});
+    amt.addEventListener("input",function(){ var v=amt.value.replace(/[^\d]/g,""); d.billing.amount=v; amt.value=v?yen(parseInt(v,10)):""; });
+    add(form,h("div",{class:"field"}, h("label",{class:"flabel",for:"f-amt"},"金額"), h("label",{class:"amountbox"}, amt, h("span",null,"円 / "+(d.billing.cycle==="yearly"?"年":"月")))));
+    ui.focusAmount = !editing && !d.manual ? amt : null;
+    var dayText = d.billing.day ? (d.billing.cycle==="yearly" ? (d.billing.month?"毎年"+d.billing.month+"月"+d.billing.day+"日":"毎年（月を選んでください）") : "毎月"+d.billing.day+"日") : null;
+    add(form,h("div",{class:"field"}, h("span",{class:"flabel"},"更新日",h("small",null,"わからなければ空のままでOK")),
+      h("button",{class:"pickrow",type:"button",onclick:function(){ daySheet(d); }}, dayText?h("span",null,dayText):h("span",{class:"ph"},"日付を選ぶ"), chev())));
+  }
+  add(form,h("div",{class:"field",id:"fld-payment"}, h("span",{class:"flabel"},"支払い方法"),
+    h("button",{class:"pickrow",type:"button",onclick:function(){ optionSheet("支払い方法", PAYMENTS, d.payment, function(v){ d.payment=v; }); }}, h("span",null,label(PAYMENTS,d.payment)), chev())));
+  var used=knownEmails().filter(function(e){ return e.email.toLowerCase()!==(d.account.email||"").trim().toLowerCase(); }).slice(0,3);
+  var emailIn=h("input",{class:"inp",type:"email",id:"f-mail",maxlength:String(LIMITS.email),placeholder:"name@example.com",autocomplete:"off",autocapitalize:"off",spellcheck:"false"}); emailIn.value=d.account.email||"";
+  emailIn.addEventListener("input",function(){ d.account.email=emailIn.value; });
+  var ef=h("div",{class:"field",id:"fld-account"}, h("label",{class:"flabel",for:"f-mail"},"登録メール / アカウント",h("small",null,"任意")));
+  if(used.length){ var uc=h("div",{class:"usechips"}); used.forEach(function(e){ add(uc,h("button",{class:"usechip",type:"button",onclick:function(){ d.account.email=e.email; if(!d.account.nickname) d.account.nickname=e.nick; render(); }}, (e.nick||mask(e.email))+" を使う")); }); add(ef,uc); }
+  add(ef,emailIn); add(form,ef);
+  var memo=h("textarea",{class:"inp",id:"f-memo",maxlength:String(LIMITS.memo),placeholder:"パスワードは書かないでください"}); memo.value=d.memo||"";
+  var cnt=h("span",{class:"counter"}, (d.memo||"").length+"/"+LIMITS.memo);
+  memo.addEventListener("input",function(){ d.memo=memo.value; cnt.textContent=memo.value.length+"/"+LIMITS.memo; });
+  add(form,h("div",{class:"field",id:"fld-memo"}, h("label",{class:"flabel",for:"f-memo"},"メモ",h("small",null,"任意")), h("div",{style:"position:relative"}, memo, cnt)));
+  if(editing){
+    var more=h("details",{class:"more"});
+    if(d.plan||d.account.nickname||d.account.login||d.links.cancel||d.links.contact||ui.editAnchor==="cancel"||ui.editAnchor==="contact"||ui.editAnchor==="login") more.setAttribute("open","");
+    add(more,h("summary",null, "そのほか（任意）", ic("down",20)));
+    var body=h("div",{class:"body"});
+    add(body,h("div",{class:"field",id:"fld-login"}, h("span",{class:"flabel"},"ログイン方法"),
+      h("button",{class:"pickrow",type:"button",onclick:function(){ optionSheet("ログイン方法", [["","未選択"]].concat(LOGINS), d.account.login, function(v){ d.account.login=v; }); }}, label([["","未選択"]].concat(LOGINS),d.account.login)?h("span",null,label([["","未選択"]].concat(LOGINS),d.account.login)):h("span",{class:"ph"},"選ぶ"), chev())));
+    add(body,fieldText("メールの呼び名","例：メインのGmail",d.account,"nickname",LIMITS.nickname));
+    add(body,fieldText("プラン名","例：ファミリー、学割",d,"plan",LIMITS.plan));
+    var fc=fieldText("解約方法のページ","https://",d.links,"cancel",LIMITS.url,"url"); fc.id="fld-cancel"; add(body,fc);
+    var fq=fieldText("問い合わせ先","https://",d.links,"contact",LIMITS.url,"url"); fq.id="fld-contact"; add(body,fq);
+    add(more,body); add(form,more);
+  }
+  add(main,form); add(wrap,main);
+  add(wrap,h("div",{class:"fixedcta"},h("div",{class:"in"}, h("button",{class:"btn",onclick:submitForm}, editing?"保存する":"登録する"))));
+  return wrap;
+}
+var fid=0;
+function fieldText(lab, ph, obj, key, max, type){
+  var id="ft"+(++fid);
+  var i=h("input",{class:"inp",id:id,type:type||"text",maxlength:String(max),placeholder:ph,autocomplete:"off",autocapitalize:"off",spellcheck:"false"}); i.value=obj[key]||"";
+  i.addEventListener("input",function(){ obj[key]=i.value; });
+  return h("div",{class:"field"}, h("label",{class:"flabel",for:id},lab), i);
+}
+function optionSheet(title, pairs, current, onPick){
+  openSheet(function(){
+    var list=h("div",{role:"listbox","aria-label":title});
+    pairs.forEach(function(p){ add(list,h("button",{class:"optrow",role:"option","aria-selected":p[0]===current?"true":"false",onclick:function(){ onPick(p[0]); closeSheet(); render(); }}, p[1], p[0]===current?ic("tick",22):null)); });
+    return [h("h2",{class:"h2"},title), list];
+  });
+}
+function daySheet(d){
+  var tmpM=d.billing.month||null;
+  openSheet(function(){
+    var out=[h("h2",{class:"h2"}, d.billing.cycle==="yearly"?"毎年の更新日":"毎月の更新日")];
+    if(d.billing.cycle==="yearly"){
+      var mg=h("div",{class:"monthgrid",role:"group","aria-label":"月"});
+      for(var m=1;m<=12;m++){ (function(m){ add(mg,h("button",{class:"dcell","aria-pressed":tmpM===m?"true":"false",onclick:function(){ tmpM=m; Array.prototype.forEach.call(mg.children,function(b,i){ b.setAttribute("aria-pressed",(i+1)===m?"true":"false"); }); }}, m+"月")); })(m); }
+      out.push(h("span",{class:"flabel"},"月"), mg, h("span",{class:"flabel"},"日"));
+    }
+    var dg=h("div",{class:"daygrid",role:"group","aria-label":"日"});
+    for(var i=1;i<=31;i++){ (function(i){ add(dg,h("button",{class:"dcell","aria-pressed":d.billing.day===i?"true":"false",onclick:function(){
+      if(d.billing.cycle==="yearly" && !tmpM){ toast("先に月を選んでください"); return; }
+      d.billing.day=i; if(d.billing.cycle==="yearly") d.billing.month=tmpM; closeSheet(); render(); }}, String(i))); })(i); }
+    out.push(dg);
+    out.push(h("p",{class:"note",style:"margin:0"},"31日を選ぶと、短い月は月末として扱います。"));
+    out.push(h("button",{class:"btn2",onclick:function(){ d.billing.day=null; d.billing.month=null; closeSheet(); render(); }},"わからない（あとで入力）"));
+    return out;
+  });
+}
+function startForm(base){
+  ui.selectScroll=window.scrollY||0; /* 同一登録フロー中のサービス選択Scrollを保持 */
+  ui.draft={id:null, presetId:base.presetId, name:base.name||"", plan:"", category:base.category||"other", status:"active",
+    billing:{cycle:"monthly", amount:"", month:null, day:null}, payment:"card", links:{cancel:"",contact:""},
+    account:{email:"",nickname:"",login:""}, memo:"", manual:!!base.manual, dayUnknown:false};
+  ui.payAll=false; ui.focused=false; ui.draftSnap=draftKey(ui.draft);
+  go("form");
+}
+function editItem(it, anchor){
+  ui.editAnchor=anchor||null;
+  var d=JSON.parse(JSON.stringify(it)); d.manual=!it.presetId; d.dayUnknown=(it.billing.cycle!=="free" && !it.billing.day);
+  if(d.billing.cycle==="free") d.billing.amount=""; ui.draft=d; ui.payAll=false; ui.focused=true; ui.draftSnap=draftKey(d); go("form");
+}
+/* 未保存変更の判定：開始時点のスナップショットと現在の入力を比べる（保存データには触れない） */
+function draftKey(d){ return JSON.stringify([d.name, d.plan||"", d.category, d.status, d.billing.cycle, String(d.billing.amount===null||d.billing.amount===undefined?"":d.billing.amount), d.billing.month||null, d.billing.day||null, d.payment, d.links.cancel||"", d.links.contact||"", d.account.email||"", d.account.nickname||"", d.account.login||"", d.memo||""]); }
+function isDraftDirty(){ return !!ui.draft && draftKey(ui.draft)!==ui.draftSnap; }
+function leaveForm(go2){
+  if(!isDraftDirty()){ go2(); return; }
+  openSheet(function(){ return [
+    h("div",{class:"h2"},"入力内容を破棄しますか？"),
+    h("div",{class:"note",style:"font-size:14px"},"保存していない変更は失われます。"),
+    h("button",{class:"btn",onclick:closeSheet},"入力を続ける"),
+    h("button",{class:"btn2 danger",onclick:function(){ closeSheet(); go2(); }},"破棄して戻る")
+  ]; });
+}
+function knownEmails(){
+  var seen={}, out=[];
+  state.items.forEach(function(it){ var e=(it.account.email||"").trim(); if(!e) return; var k=e.toLowerCase();
+    if(!seen[k]){ seen[k]={email:e, nick:it.account.nickname||""}; out.push(seen[k]); } else if(!seen[k].nick && it.account.nickname){ seen[k].nick=it.account.nickname; } });
+  return out;
+}
+function daySelect(d, key, max, suf, aria){
+  var s=h("select",{class:"inp","aria-label":aria,style:"font-size:18px;font-weight:700;padding:0 10px;max-width:140px"});
+  add(s,h("option",{value:""}, key==="month"?"―月":"―日"));
+  for(var i=1;i<=max;i++){ var o=h("option",{value:String(i)}, i+suf); if(d.billing[key]===i) o.selected=true; add(s,o); }
+  s.addEventListener("change",function(){ d.billing[key]=s.value?parseInt(s.value,10):null; if(s.value) d.dayUnknown=false; });
+  return s;
+}
+function textField(lab, ph, obj, key, max, type){
+  var i=h("input",{class:"inp",type:type||"text",maxlength:String(max),placeholder:ph,autocomplete:"off",autocapitalize:"off",spellcheck:"false"}); i.value=obj[key]||"";
+  i.addEventListener("input",function(){ obj[key]=i.value; });
+  return h("label",{class:"field"}, h("span",{class:"flabel"},lab), i);
+}
+function submitForm(){
+  var d=ui.draft;
+  if(storeLocked()) return; /* Phase A：入力内容は残したまま、何も変更しない */
+  /* Phase B：新規登録は500件まで（読み込み・Importの上限と同じ LIMITS.items）。上限時は何も変更せず入力画面に留まる */
+  if(!d.id && state.items.length>=LIMITS.items){ toast("登録できるのは"+LIMITS.items+"件までです。使っていない登録を削除してから追加してください"); return; }
+  var name=str(d.name,LIMITS.name);
+  if(!name){ toast("サービス名を入れてください"); return; }
+  if(d.billing.cycle!=="free"){
+    var a=parseInt(String(d.billing.amount).replace(/[^\d]/g,""),10);
+    if(!isFinite(a)){ toast("金額を入れてください（わからなければ0円で登録できます）"); return; }
+    d.billing.amount=a;
+    if(d.billing.cycle==="yearly" && d.billing.day && !d.billing.month){ toast("更新する月も選んでください"); return; }
+  } else { d.billing.amount=0; }
+  if(d.links.cancel && !safeUrl(d.links.cancel)){ toast("解約ページは https:// で始まるURLを入れてください"); return; }
+  if(d.links.contact && !safeUrl(d.links.contact)){ toast("問い合わせ先は https:// で始まるURLを入れてください"); return; }
+  var isNew=!d.id;
+  var item=cleanItem({id:d.id||newId(), presetId:d.presetId, name:name, plan:d.plan, category:d.category, status:d.status, billing:d.billing, payment:d.payment, links:d.links, account:d.account, memo:d.memo, checkedAt:d.checkedAt||todayISO(), updatedAt:new Date().toISOString()});
+  var next=cloneState(); /* Phase C：確定状態には保存成功まで触れない（再試行しても重複しない） */
+  if(isNew){ next.items.push(item);
+    if(!d.presetId && !next.myPresets.some(function(p){ return p.name===item.name; })){ next.myPresets.unshift({name:item.name, cat:item.category}); next.myPresets=next.myPresets.slice(0,LIMITS.myPresets); }
+  } else { next.items=next.items.map(function(x){ return x.id===item.id?item:x; }); }
+  if(commit(next)){ ui.draft=null; toast(isNew?"登録しました":"保存しました"); if(isNew){ /* 登録完了 → 登録した項目の詳細（有料/無料で分岐しない）。詳細の戻る先は登録開始元 */
+      ui.tab=(ui.flowOrigin==="reg")?"reg":"subs"; ui.q=""; ui.filter="all"; ui.selectScroll=0; go("detail",{id:item.id}); } else { go("detail",{id:item.id}); } }
+}
+
+/* ===== 詳細 ===== */
+function detailView(){
+  var it=byId(ui.id); if(!it){ ui.screen="home"; return homeView(); }
+  var c=cat(it.category);
+  var fromReg=ui.tab==="reg";
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(fromReg?"登録先":"サブスク",function(){ backToList(fromReg?"reg":"home"); },"詳細"));
+  var main=h("main",{class:"main"});
+  var n=nextRenewal(it), dd=daysUntil(n);
+  add(main,h("section",{class:"summary"},
+    h("div",{class:"svchead"}, catTile(it.category,true,brandColor(it)), h("div",{class:"stack8",style:"gap:2px;min-width:0"}, h("b",null,it.name), h("span",{class:"sec-text"}, c.label+(it.plan?"・"+it.plan:"")))),
+    h("div",{class:"divider"}),
+    h("div",{class:"cols3"},
+      h("div",null, h("span",{class:"micro"}, it.billing.cycle==="yearly"?"年額料金":"月額料金"), h("b",null, isPaid(it)?yenS(it.billing.amount):"無料")),
+      h("div",null, h("span",{class:"micro"},"請求サイクル"), h("b",null, cycleWord(it))),
+      h("div",null, h("span",{class:"micro"},"次回更新日"), h("b",null, n?jd(n):"未設定"))),
+    (dd!==null && dd<=7) ? h("p",{class:"micro",style:"margin:0;color:var(--color-text-primary)"}, dd===0?"今日が更新日です":"更新まであと"+dd+"日です") : null));
+  var edit=function(){ editItem(it); };
+  var gl=h("div",{class:"glist"});
+  add(gl,infoRow("pay","支払い方法",label(PAYMENTS,it.payment),function(){ editItem(it,"payment"); }));
+  add(gl,infoRow("person","登録先", it.account.email||"未入力", function(){ editItem(it,"account"); }));
+  if(it.links.cancel) add(gl,infoLink("ext","解約窓口",windowText(it),it.links.cancel));
+  else add(gl,infoRow("ext","解約窓口",windowText(it),function(){ editItem(it,"cancel"); }));
+  if(it.links.contact) add(gl,infoLink("ext","問い合わせ先","ページを開く",it.links.contact));
+  add(gl,infoRow("memo","メモ",it.memo||"なし",function(){ editItem(it,"memo"); }));
+  add(gl,infoStatic("cal","見直した日",it.checkedAt?fmtISO(it.checkedAt):"未確認")); /* 読み取り専用。更新は「内容に変更なし」だけ */
+  add(main,h("section",{class:"stack"}, h("h2",{class:"sectitle"},"詳細情報"), gl));
+  var seg=h("div",{class:"seg",role:"group","aria-label":"いまの状態"});
+  STATUSES.forEach(function(s){ add(seg,h("button",{type:"button","aria-pressed":it.status===s[0]?"true":"false",onclick:function(){ var next=cloneState(); next.items.forEach(function(x){ if(x.id===it.id){ x.status=s[0]; x.updatedAt=new Date().toISOString(); } }); if(!commit(next)) return; render(); toast("状態を「"+s[1]+"」にしました"); }}, s[1])); });
+  add(main,h("section",{class:"stack"}, h("h2",{class:"sectitle"},"いまの状態"), seg));
+  add(main,h("div",{class:"stack"},
+    h("button",{class:"btn",onclick:edit}, ic("edit",22),"編集する"),
+    h("button",{class:"btn2",onclick:function(){ var next=cloneState(); next.items.forEach(function(x){ if(x.id===it.id){ x.checkedAt=todayISO(); x.updatedAt=new Date().toISOString(); } }); if(!commit(next)) return; render(); toast("見直した日を今日にしました"); }}, ic("check",22),"内容に変更なし"),
+    h("button",{class:"btn2 danger",onclick:function(){ confirmSheet("「"+it.name+"」を削除しますか？","削除すると元に戻せません。","削除する",true,function(){ var next=cloneState(); next.items=next.items.filter(function(x){ return x.id!==it.id; }); if(!commit(next)) return; toast("削除しました"); backToList(fromReg?"reg":"home"); }); }}, ic("trash",22),"削除する")));
+  add(wrap,main);
+  return wrap;
+}
+function fmtISO(s){ var p=s.split("-"); return parseInt(p[0],10)+"年"+parseInt(p[1],10)+"月"+parseInt(p[2],10)+"日"; }
+function infoRow(icn, k, v, fn){
+  return h("button",{class:"gitem",onclick:fn}, h("span",{class:"ic"},ic(icn,22)), h("span",{class:"t"}, h("span",{class:"micro"},k), h("b",null,v)), chev());
+}
+function infoStatic(icn, k, v){
+  return h("div",{class:"gitem"}, h("span",{class:"ic"},ic(icn,22)), h("span",{class:"t"}, h("span",{class:"micro"},k), h("b",null,v)));
+}
+function infoLink(icn, k, v, url){
+  return h("a",{class:"gitem",href:url,target:"_blank",rel:"noopener noreferrer"}, h("span",{class:"ic"},ic(icn,22)), h("span",{class:"t"}, h("span",{class:"micro"},k), h("b",null,v)), h("span",{class:"chev"},ic("ext",20)));
+}
+
+/* ===== 登録先 ===== */
+function regView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,pageHeader("登録先", state.items.length?[h("button",{class:"iconbtn","aria-label":"登録する",onclick:function(){ go("select",{q:"",filter:"all",flowOrigin:"reg",listSnap:listSnapshot(),selectScroll:0}); }}, ic("plus",24))]:null));
+  var main=h("main",{class:"main"});
+  if(!state.items.length){
+    add(main,h("div",{class:"empty"}, emptyIll(),
+      h("h2",null,"まだ登録先がありません"),
+      h("p",{class:"sec-text",style:"margin:0"},"サブスクや無料サービスに使っている", h("br"), "メールアドレスを登録すると、ここにまとまります。"),
+      h("button",{class:"btn",disabled:store.status==="locked",onclick:function(){ go("select",{q:"",filter:"all",flowOrigin:"reg",listSnap:listSnapshot(),selectScroll:0}); }}, ic("plus",22),"登録する"),
+      store.status==="locked"?h("p",{class:"sec-text",style:"margin:0;color:var(--color-text-primary)"},"保存を止めているため、追加とサンプル投入はできません。"):null)); /* Phase A.1：保存禁止中だけ無効化 */
+    add(wrap,main); add(wrap,nav()); return wrap;
+  }
+  var g=groupsByEmail();
+  var list=h("div",{class:"stack",style:"gap:20px"});
+  g.list.forEach(function(gr){
+    var box=h("section",{class:"acct"});
+    add(box,h("div",{class:"head"}, h("span",{class:"icontile"},ic("mail",22)),
+      h("span",{class:"t"}, h("b",null, state.settings.mask?mask(gr.email):gr.email), h("span",{class:"sec-text"}, (gr.nick?gr.nick+"・":"")+gr.items.length+"件"))));
+    gr.items.forEach(function(it){ add(box,acctRow(it)); });
+    add(list,box);
+  });
+  if(g.missing.length){
+    var mb=h("section",{class:"acct"});
+    add(mb,h("div",{class:"head"}, h("span",{class:"icontile"},ic("mailoff",22)),
+      h("span",{class:"t"}, h("b",null,"メール未登録"), h("span",{class:"sec-text"}, g.missing.length+"件・入れておくと探しやすくなります"))));
+    g.missing.forEach(function(it){ add(mb,acctRow(it)); });
+    add(list,mb);
+  }
+  add(main,list);
+  add(wrap,main); add(wrap,nav());
+  return wrap;
+}
+function acctRow(it){
+  var n=nextRenewal(it);
+  return h("button",{class:"gitem",onclick:function(){ ui.tab="reg"; openDetail(it.id); }},
+    catTile(it.category,false,brandColor(it)),
+    h("span",{class:"t"}, h("b",null,it.name), h("span",{class:"sec-text meta"}, h("span",{class:"nw"},cat(it.category).label), it.account.login?h("span",{class:"sep","aria-hidden":"true"},"・"):null, it.account.login?h("span",{class:"nw"},LOGIN_SHORT[it.account.login]||label(LOGINS,it.account.login)):null)),
+    h("span",{style:"display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0"}, isPaid(it)?h("b",{class:"num",style:"font-size:16px"},yenS(it.billing.amount)):h("b",{style:"font-size:16px;color:var(--color-text-secondary)"},"無料"), isPaid(it)?h("span",{class:"micro"}, n?"次回 "+jd(n):"更新日 未設定"):null),
+    chev());
+}
+
+/* ===== 設定 ===== */
+function settingsView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,pageHeader("設定"));
+  var main=h("main",{class:"main",style:"gap:0"});
+  add(main,setRow("file","PDF","一覧をPDFで保存",function(){ go("pdf"); }));
+  add(main,setRow("cloud","バックアップ","機種変更の前に",function(){ go("backup"); }));
+  add(main,setRow("shield","プライバシー","このアプリは外部と通信しません",safetySheet));
+  add(main,h("div",{style:"height:32px"}));
+  add(main,h("div",{class:"setrow disabled","aria-disabled":"true",role:"group","aria-label":"応援（準備中）"},
+    h("span",{class:"icontile"},ic("heart",22)),
+    h("span",{class:"t"}, h("b",null,"応援"), h("span",{class:"sec-text"},"アプリの開発をサポートする")),
+    h("span",{class:"soon"},"準備中")));
+  add(main,h("div",{style:"height:32px"}));
+  add(main,setRow("trash","すべてのデータを削除","この操作は元に戻せません",function(){ if(storeLocked()) return; /* Phase A */ confirmSheet("すべてのデータを削除しますか？","登録したサブスク・登録先・設定がすべて消えます。先にバックアップを書き出しておくと安心です。","すべて削除する",true,function(){ try{ window.localStorage.removeItem(STORE_KEY); }catch(e){ toast("削除できませんでした。ブラウザの設定を確認してください"); return; } /* Phase C */ state={items:[],myPresets:[],settings:{ownerName:"",mask:true}}; render(); toast("すべて削除しました"); }); }, true));
+  add(main,h("p",{class:"label-en",style:"text-align:center;margin:32px 0 0"},"TANAOROSHI v0.5"));
+  add(wrap,main); add(wrap,nav());
+  return wrap;
+}
+function setRow(icn, title, sub, fn, danger){
+  return h("button",{class:"setrow"+(danger?" danger":""),onclick:fn}, h("span",{class:"icontile"+(danger?" danger":"")},ic(icn,22)), h("span",{class:"t"}, h("b",null,title), h("span",{class:"sec-text"},sub)), chev());
+}
+function pdfView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(null,function(){ go("settings"); },"PDF"));
+  var main=h("main",{class:"main",style:"gap:24px"});
+  add(main,h("div",{class:"stack8"}, h("h2",{class:"pagetitle"},"リストをPDFで保存"), h("p",{class:"sec-text",style:"margin:0"},"登録しているサブスクと登録先を、A4の1枚にまとめて保存できます。")));
+  var nameIn=h("input",{class:"inp",id:"p-name",type:"text",maxlength:String(LIMITS.ownerName),placeholder:"例：たろう",autocomplete:"off",style:"padding-right:52px"}); nameIn.value=state.settings.ownerName;
+  var clear=h("button",{class:"iconbtn","aria-label":"名前を消す",style:"position:absolute;right:6px;top:6px;color:var(--color-text-secondary)",onclick:function(){ var next=cloneState(); next.settings.ownerName=""; if(commit(next)) nameIn.value=""; }}, ic("x",20));
+  nameIn.addEventListener("change",function(){ var next=cloneState(); next.settings.ownerName=str(nameIn.value,LIMITS.ownerName); commit(next); });
+  add(main,h("div",{class:"field"}, h("label",{class:"flabel",for:"p-name"},"PDFに載せる名前",h("small",null,"ニックネームでもOK")), h("div",{style:"position:relative"}, nameIn, clear), h("span",{class:"micro"},"PDFの作成者欄に表示されます。")));
+  add(main,h("div",{class:"togglecard"},
+    h("span",{class:"stack8",style:"gap:2px"}, h("b",{style:"font-size:16px;font-weight:600"},"メールアドレスを伏せ字にする"), h("span",{class:"sec-text"},"ta****@gmail.com のように表示")),
+    h("button",{class:"switch","aria-pressed":state.settings.mask?"true":"false","aria-label":"メールアドレスを伏せ字にする",onclick:function(){ var next=cloneState(); next.settings.mask=!state.settings.mask; if(!commit(next)) return; render(); }}, h("span"))));
+  add(main,h("div",{class:"stack"}, h("button",{class:"btn",onclick:function(){ var nm=str(nameIn.value,LIMITS.ownerName); if(nm!==state.settings.ownerName){ var next=cloneState(); next.settings.ownerName=nm; if(!commit(next)) return; } startPdf(); }}, ic("file",22),"PDFで保存"),
+    h("p",{class:"micro",style:"margin:0;text-align:center"},"このあと保存先で「PDFとして保存」を選びます。")));
+  add(wrap,main);
+  return wrap;
+}
+function backupView(){
+  var wrap=h("div",{class:"wrap"});
+  add(wrap,subHeader(null,function(){ go("settings"); },"バックアップ"));
+  var main=h("main",{class:"main",style:"gap:24px"});
+  add(main,h("p",{class:"sec-text",style:"margin:0"},"機種変更の前に、データを書き出して保管します。"));
+  add(main,h("div",{class:"stack"},
+    h("button",{class:"row",onclick:exportSheet}, h("span",{class:"icontile"},ic("share",22)), h("span",{class:"t"}, h("b",null,"バックアップを書き出す"), h("span",{class:"sec-text"},"文字をコピーして保存")), chev()),
+    h("button",{class:"row",onclick:importSheet}, h("span",{class:"icontile"},ic("get",22)), h("span",{class:"t"}, h("b",null,"バックアップを読み込む"), h("span",{class:"sec-text"},"控えておいた内容を読み込む")), chev())));
+  add(main,h("div",{class:"infocard"}, h("span",{style:"color:var(--color-text-secondary);display:flex"},ic("info",22)),
+    h("div",{class:"stack8",style:"gap:4px"}, h("b",{style:"font-size:15px"},"このアプリは外部と通信しません。"), h("span",{class:"sec-text"},"書き出しと読み込みは、お使いの端末の中だけで行われます。データが外部に送られることはありません。"))));
+  add(wrap,main);
+  return wrap;
+}
+
+/* ===== グループ ===== */
+function groupsByEmail(){
+  var groups={}, order=[], missing=[];
+  state.items.forEach(function(it){
+    var e=it.account.email.trim().toLowerCase();
+    if(!e){ missing.push(it); return; }
+    if(!groups[e]){ groups[e]={email:it.account.email.trim(), nick:"", items:[]}; order.push(e); }
+    if(!groups[e].nick && it.account.nickname) groups[e].nick=it.account.nickname;
+    groups[e].items.push(it);
+  });
+  return {list:order.map(function(k){ return groups[k]; }), missing:missing};
+}
+function exportSheet(){
+  if(store.status==="locked"){ toast("保存データを読み込めていないため、バックアップは書き出せません（画面上部の案内をご確認ください）"); return; } /* Phase A.1 */
+  var text=JSON.stringify(exportObj());
+  openSheet(function(){
+    var ta=h("textarea",{class:"inp",readonly:true,"aria-label":"バックアップの文字"}); ta.value=text;
+    return [h("div",{class:"h2"},"バックアップを書き出す"),
+      h("div",{class:"note",style:"font-size:13px"},"下の文字をすべてコピーして、メモアプリなど安全な場所に保管してください。登録メールが含まれるので、人に送らないでください。"),
+      ta,
+      h("button",{class:"btn",onclick:function(){ copyText(text, ta); }},"コピーする"),
+      h("button",{class:"btn sec2",onclick:closeSheet},"閉じる")];
+  });
+}
+function copyText(text, ta){
+  var done=function(){ toast("コピーしました"); };
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done,function(){ fallback(); }); return; } }catch(e){}
+  fallback();
+  function fallback(){ try{ ta.focus(); ta.select(); ta.setSelectionRange(0,text.length); var ok=document.execCommand&&document.execCommand("copy"); if(ok) done(); else toast("文字を長押しして「すべてを選択」→「コピー」してください"); }catch(e){ toast("文字を長押しして「すべてを選択」→「コピー」してください"); } }
+}
+function importSheet(prefill){
+  if(storeLocked()) return; /* Phase A：異常データの上書きを防ぐ */
+  openSheet(function(){
+    var ta=h("textarea",{class:"inp","aria-label":"バックアップの文字を貼り付け",placeholder:"ここに貼り付け"}); if(typeof prefill==="string") ta.value=prefill; /* Phase C：保存失敗時に貼り付けた文字を残す */
+    var msg=h("div",{class:"note",role:"alert",style:"color:var(--danger);font-size:13px"});
+    return [h("div",{class:"h2"},"バックアップを読み込む"),
+      h("div",{class:"note",style:"font-size:13px"},"書き出した文字をそのまま貼り付けてください。今の登録内容は、読み込んだ内容に置き換わります。"),
+      ta, msg,
+      h("button",{class:"btn",onclick:function(){
+        var parsed=checkBackupText(ta.value).result; /* Phase D：判定を共通化（受け入れ条件は従来どおり） */
+        if(!parsed.ok){ msg.textContent=parsed.reason; return; }
+        closeSheet();
+        confirmSheet("読み込んで置き換えますか？", parsed.items.length+"件の登録を読み込みます。今の登録内容（"+state.items.length+"件）は消えます。","置き換える",false,function(){ var text=ta.value; if(!commit({items:parsed.items, myPresets:parsed.myPresets, settings:parsed.settings})){ importSheet(text); return; } render(); toast(parsed.items.length+"件を読み込みました"); });
+      }},"読み込む"),
+      h("button",{class:"btn sec2",onclick:closeSheet},"やめる")];
+  });
+}
+function safetySheet(){
+  openSheet(function(){
+    function li(t){ return h("li",{style:"margin-bottom:6px"},t); }
+    return [h("div",{class:"h2"},"守れること・守れないこと"),
+      h("b",null,"このアプリで守っていること"),
+      h("ul",{class:"note",style:"font-size:14px;padding-left:20px;margin:0"},
+        li("外部との通信を、ブラウザの設定で禁止しています。"),
+        li("決められたプログラム以外は動かないようにしています。"),
+        li("入力された文字は、プログラムとしてではなく文字として扱います。"),
+        li("パスワードの入力欄はありません。")),
+      h("b",null,"このアプリでは守れないこと"),
+      h("ul",{class:"note",style:"font-size:14px;padding-left:20px;margin:0"},
+        li("スマホ自体の乗っ取りや、ウイルス。"),
+        li("パソコンのブラウザに入れた、悪い拡張機能。"),
+        li("偽物の配布ページや、データを送らせようとする詐欺。"),
+        li("画面をのぞき見られること。")),
+      h("div",{class:"note",style:"font-size:13px"},"スマホのOSを最新にし、画面ロックをかけて使ってください。"),
+      h("button",{class:"btn sec2",onclick:closeSheet},"閉じる")];
+  });
+}
+
+/* ===== PDF ===== */
+function startPdf(){
+  if(!state.items.length){ toast("まだ登録がありません"); return; }
+  buildPrint();
+  var ua=navigator.userAgent||"";
+  var how = /iPhone|iPad|iPod/.test(ua) ? "iPhone：次の画面で共有ボタン →「ファイルに保存」を選ぶとPDFになります。"
+    : /Android/.test(ua) ? "Android：次の画面で保存先を「PDFとして保存」にして、保存ボタンを押します。"
+    : "パソコン：次の画面で送信先を「PDFに保存」にして、保存を押します。";
+  openSheet(function(){ return [
+    h("div",{class:"h2"},"PDFで保存"),
+    h("div",{class:"note",style:"font-size:14px"},how),
+    h("div",{class:"note",style:"font-size:13px"},"PDFには登録メールが載ります"+(state.settings.mask?"（伏せ字）":"")+"。保管場所に気をつけてください。"),
+    h("button",{class:"btn",onclick:function(){ closeSheet(); toast("PDF保存画面を開きます"); setTimeout(function(){ try{ window.print(); }catch(e){ toast("印刷画面を開けませんでした。ブラウザのメニューから「印刷」を選んでください"); } },50); }},"保存画面を開く"),
+    h("button",{class:"btn sec2",onclick:closeSheet},"やめる")
+  ]; });
+}
+function buildPrint(){
+  var paid=state.items.filter(function(it){ return isPaid(it) && it.status!=="cancelled"; });
+  var total=paid.reduce(function(s,it){ return s+monthly(it); },0);
+  var d=new Date(); var dateStr=d.getFullYear()+"年"+(d.getMonth()+1)+"月"+d.getDate()+"日";
+  var em=function(e){ return state.settings.mask?mask(e):e; };
+  var doc=h("div",{class:"pd"});
+  add(doc,h("div",{class:"head"}, h("h1",{class:"mincho"},"サブスクと登録先の一覧"),
+    h("div",{class:"meta"}, h("div",null,"作成日　"+dateStr), state.settings.ownerName?h("div",null,"作成者　"+state.settings.ownerName):null)));
+  add(doc,h("div",{class:"kpis"},
+    h("div",{class:"kpi"}, h("small",null,"サブスク（有料の契約）"), h("b",{class:"mincho"}, paid.length+" 件")),
+    h("div",{class:"kpi"}, h("small",null,"月あたり"), h("b",{class:"mincho"},"約"+yen(total)+" 円")),
+    h("div",{class:"kpi"}, h("small",null,"年間"), h("b",{class:"mincho"},"約"+yen(total*12)+" 円"))));
+  add(doc,h("div",{class:"warn"}, h("b",null,"取り扱い注意　"),"契約先と登録メールが書かれています。大切に保管してください。パスワードは記載していません。"));
+  add(doc,sectionHead("1","サブスク（有料の契約）","何に・いくら・どこで払っているか。解約するときは右端の窓口へ"));
+  var tb=h("tbody");
+  paid.slice().sort(function(a,b){ return monthly(b)-monthly(a); }).forEach(function(it){
+    add(tb,h("tr",null, h("td",{class:"b mincho"},it.name+(it.plan?"（"+it.plan+"）":"")), h("td",{class:"r b"},yen(it.billing.amount)+"円/"+unit(it)), h("td",null,label(PAYMENTS,it.payment)), h("td",null,cycleText(it)), h("td",{class:"b"},windowText(it))));
+  });
+  add(doc,h("table",null, h("thead",null,h("tr",null, h("th",null,"サービス"), h("th",{class:"r"},"金額"), h("th",null,"支払い方法"), h("th",null,"更新日"), h("th",null,"解約の窓口"))), tb));
+  var g=groupsByEmail();
+  add(doc,sectionHead("2","登録先（メールアドレス別）","どのメールで、どのサービスに登録しているか"));
+  var groups=h("div",{class:"groups"});
+  g.list.forEach(function(gr){
+    var box=h("div",{class:"g"}, h("div",{class:"gh"}, h("b",{class:"mincho"},gr.nick||"メールアドレス"), h("span",{style:"font-size:9pt"},em(gr.email))));
+    gr.items.forEach(function(it){ add(box,h("div",{class:"gi"}, h("span",null,it.name+(isPaid(it)?"":"（無料）")), h("span",null,label(LOGINS,it.account.login)||"未記入"))); });
+    add(groups,box);
+  });
+  if(g.missing.length){
+    var mb=h("div",{class:"g"}, h("div",{class:"gh"}, h("b",{class:"mincho"},"メール未記入"), h("span",{style:"font-size:9pt"},"")));
+    g.missing.forEach(function(it){ add(mb,h("div",{class:"gi"}, h("span",null,it.name+(isPaid(it)?"":"（無料）")), h("span",null,"未記入"))); });
+    add(groups,mb);
+  }
+  add(doc,groups);
+  add(doc,sectionHead("3","解約・手続きのしかた","本人でも、家族が代わりに手続きする場合でも同じです"));
+  add(doc,h("div",{class:"steps"},
+    h("div",null,h("b",{class:"mincho"},"一"),h("span",null,"支払い方法によって、手続きする場所が違います。表の「解約の窓口」を見てください。")),
+    h("div",null,h("b",{class:"mincho"},"二"),h("span",null,"App Storeで払っているものは、サービスのサイトではなく、iPhoneの「設定」から解約します。")),
+    h("div",null,h("b",{class:"mincho"},"三"),h("span",null,"IDやパスワードが分からなくても、契約先に連絡すれば手続きできる場合が多くあります。"))));
+  add(doc,h("div",{class:"foot"}, h("span",null,"アカウント棚卸し で作成"), h("span",null,dateStr)));
+  document.getElementById("print").replaceChildren(doc);
+}
+function sectionHead(n,t,guide){ return h("div",{class:"h"}, h("span",{class:"n mincho"},n), h("div",null, h("h2",{class:"mincho"},t), h("small",null,guide))); }
+
+document.addEventListener("keydown",function(e){ if(e.key==="Escape" && ui.sheet) closeSheet(); });
+load(); render();
+})();
+</script>
+<script>(function(){try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',function(){try{navigator.serviceWorker.register('./sw.js').catch(function(){});}catch(e){}});}}catch(e){}})();</script>
+</body>
+</html>
